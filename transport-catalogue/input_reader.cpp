@@ -8,6 +8,11 @@ using namespace std::literals;
 
 namespace transport_catalogue {
 
+InputParser::InputParser(TransportCatalogue *catalogue_ptr)
+    : catalogue_ptr_(catalogue_ptr)
+    {
+    }
+
 // All parsing functions writen with idea, that could be any ' ' space symbols in any position in input line
 
 static void ParseDistances(InputParser::Request& req, std::string_view& distance_line) {
@@ -168,6 +173,53 @@ std::vector<InputParser::Request> InputParser::ParseFromStream(std::istream& inp
         result[i] = std::move(ParseLine(std::string_view (tmp)));
     }
     return result;
+}
+
+void InputParser::ProcessRequests(const std::vector<Request>& requests) {
+
+    // Adding stops to catalogue
+    for (auto i : requests) {
+        if (i.req_type == InputParser::RequestType::ADD_STOP) {
+            //ProcessOneRequest(i);
+            catalogue_ptr_->AddStop(i.req_body[0], std::stod(i.req_body[1]), std::stod(i.req_body[2]));
+        }
+    }
+
+    // Adding distances between stops to catalogue
+    for (auto i : requests) {
+        if (i.req_type == InputParser::RequestType::ADD_STOP) {
+            for (int j = 3; j < i.req_body.size() - 1; j += 2) {
+
+                catalogue_ptr_->AddDistance(i.req_body[0], i.req_body[j + 1], std::stoi(i.req_body[j]));
+
+            }
+        }
+    }
+
+    // Adding routes to catalogue
+    for (auto i : requests) {
+        if (i.req_type == InputParser::RequestType::ADD_ROUTE) {
+            //ProcessOneRequest(i, catalogue);
+
+            std::vector<std::string> tmp;
+
+            if (i.route_type == InputParser::RouteType::STRAIGHT) {
+                for (auto j = 1; j < i.req_body.size(); ++j) {
+                    tmp.push_back(i.req_body[j]);
+                }
+                for (auto j = i.req_body.size() - 2 ; j >= 1 ; --j) {
+                    tmp.push_back(i.req_body[j]);
+                }
+            } else {
+                for (auto j = 1; j < i.req_body.size(); ++j) {
+                    tmp.push_back(i.req_body[j]);
+                }
+            }
+
+            catalogue_ptr_->AddRoute(i.req_body[0], tmp);
+        }
+    }
+
 }
 
 } // end of namespace: transport_catalogue

@@ -31,11 +31,9 @@ std::vector<StatParser::Query> StatParser::ReadFromStream(std::istream &input) {
 
 void StatParser::ProcessOneQuery(StatParser::Query query) {
     if (query.query_type == QueryType::SEARCH_ROUTE) {
-        const TransportCatalogue::BusRoute& answer = catalogue_ptr_->SearchBusRoute(query.query_body[0]);
-        PrintRoute(answer, query.query_body[0]);
+        PrintRoute(query.query_body[0]);
     } else {
-        auto answer = catalogue_ptr_->SearchBusStop(query.query_body[0]);
-        PrintStop(answer, query.query_body[0]);
+        PrintStop(query.query_body[0]);
     }
 }
 
@@ -74,51 +72,53 @@ StatParser::Query StatParser::ParseLine(std::string_view line) {
     return query;
 }
 
-void StatParser::PrintRoute(const TransportCatalogue::BusRoute& route, const std::string& not_found_name) const {
+void StatParser::PrintRoute(const std::string& name) const {
 
     // Output example:
     // Bus 751: not found
     // Bus 750: 7 stops on route, 3 unique stops, 27400 route length, 1.30853 curvature
 
-    if (!route.is_found) {
-        std::cout << "Bus " << not_found_name << ": not found" << std::endl;
+    auto result = catalogue_ptr_->SearchRoute(name);
+
+    if (!std::get<5>(result)) {
+        std::cout << "Bus " << std::string(std::get<0>(result)) << ": not found" << std::endl;
         return;
     } else {
-        std::cout << "Bus " << route.route_name << ": " << route.route_size  << " stops on route, " <<
-        route.unique_stops << " unique stops, " << std::setprecision(6) << route.true_route_length <<
-        " route length, "<< route.true_route_length / double(route.route_length) << " curvature"<< std::endl;
+        std::cout << "Bus " << std::string(std::get<0>(result)) << ": "
+        << std::get<3>(result)  << " stops on route, " <<
+        std::get<4>(result) << " unique stops, " << std::setprecision(6) << std::get<2>(result) <<
+        " route length, "<< double(std::get<2>(result) / std::get<1>(result)) << " curvature"<< std::endl;
     }
 
 }
 
 
-void StatParser::PrintStop(const std::pair<TransportCatalogue::BusStop*, std::unordered_set<TransportCatalogue::BusRoute*>>& result, const std::string& not_found_name) const {
+void StatParser::PrintStop(const std::string& name) const {
 
     // Output example:
     //  Stop Samara: not found
     //  Stop Prazhskaya: no buses
     //  Stop Biryulyovo Zapadnoye: buses 256 828
 
-    if (result.first->is_found && !result.second.empty()) {
-        std::cout << "Stop " << result.first->bus_stop_name << ": buses";
-        std::set<std::string_view> names;
-        for (auto i : result.second) {
-            names.insert(i->route_name);
-        }
-        for (auto i : names) {
+    auto result = catalogue_ptr_->SearchStop(name);
+
+    if (std::get<2>(result) && !std::get<1>(result).empty()) {
+        std::cout << "Stop " << std::string(std::get<0>(result)) << ": buses";
+
+        for (auto i : std::get<1>(result)) {
             std::cout << ' ' << std::string(i);
         }
         std::cout << std::endl;
 
     }
-    if (result.first->is_found && result.second.empty()) {
+    if (std::get<2>(result) && std::get<1>(result).empty()) {
 
-        std::cout << "Stop " << result.first->bus_stop_name <<  ": no buses" << std::endl;
+        std::cout << "Stop " << std::string(std::get<0>(result)) <<  ": no buses" << std::endl;
         return;
 
     }
-    if (!result.first->is_found) {
-        std::cout << "Stop " << not_found_name << ": not found" << std::endl;
+    if (!std::get<2>(result)) {
+        std::cout << "Stop " << std::string(std::get<0>(result)) << ": not found" << std::endl;
         return;
     }
 

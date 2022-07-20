@@ -33,11 +33,9 @@ private:
 
     TransportCatalogue* catalogue_ptr_; // Ptr to catalogue to make request
 
-    void PrintRoute(const TransportCatalogue::BusRoute& route, const std::string& not_found_name) const;
+    void PrintRoute(const std::string& name) const;
 
-    void PrintStop(const std::pair<TransportCatalogue::BusStop*,
-                   std::unordered_set<TransportCatalogue::BusRoute*>>&  result,
-                   const std::string& not_found_name) const;
+    void PrintStop(const std::string& name) const;
 
     Query ParseLine(std::string_view line);
 

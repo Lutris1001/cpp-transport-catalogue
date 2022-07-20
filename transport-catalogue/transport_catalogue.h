@@ -7,7 +7,7 @@
 #include <deque>
 #include <unordered_set>
 
-#include "input_reader.h"
+//#include "input_reader.h"
 #include "geo.h"
 
 
@@ -15,49 +15,55 @@ namespace transport_catalogue {
 
 class TransportCatalogue {
 
-    friend class StatParser;
+struct Stop {
 
-struct BusStop {
-    BusStop(const std::string& name, double x, double y)
-        : bus_stop_name(name), map_point(Coordinates{x, y})
+    Stop(const std::string& name, double x, double y)
+        : name(name), map_point(Coordinates{x, y})
     {
         assert(double(-90.0) <= x && x <= double(90.0));
         assert(double(-180.0) <= y && y <= double(180.0));
     }
 
-    bool operator==(const BusStop& other);
+    bool operator==(const Stop& other);
 
-    bool is_found = false;
-    std::string bus_stop_name;
+    std::string name;
     Coordinates map_point;
 };
 
-struct BusRoute {
+struct Route {
 
-    BusRoute(const std::string& name)
-        : route_name(name)
+    Route(const std::string& name)
+        : name(name)
     {
         assert(!name.empty());
     }
 
-    bool is_found = false;
-    std::vector<BusStop*> stops;
-    std::string route_name;
+    std::vector<Stop*> stops;
+    std::string name;
+
+};
+
+struct RouteAdditionalParameters {
+
+    Route* route_ptr = nullptr;
 
     // These parameters will be calculated only if needed
-    double route_length = 0;
+
+    double geo_route_length = 0;
     int true_route_length = 0;
     std::size_t unique_stops = 0;
     std::size_t route_size = 0;
 
-    double CalculateRouteLength();
+    RouteAdditionalParameters(Route* ptr);
+
+    double CalculateGeoRouteLength();
     std::size_t CalculateUniqueStops();
     std::size_t CalculateRouteSize();
 
 };
 
-struct BusStopPtrHash {
-    size_t operator()(const std::pair<BusStop*, BusStop*>& p) const {
+struct StopPtrHash {
+    size_t operator()(const std::pair<Stop*, Stop*>& p) const {
         auto hash1 = std::hash<const void *>{}(p.first);
         auto hash2 = std::hash<const void *>{}(p.second);
 
@@ -69,11 +75,11 @@ struct BusStopPtrHash {
     }
 };
 
-    using BusStopPtrPair = std::pair<BusStop*, BusStop*>;
+    using StopPtrPair = std::pair<Stop*, Stop*>;
 
-class BusStopPtrPairEqualKey { // EqualTo class for all_distances_
+class StopPtrPairEqualKey { // EqualTo class for all_distances_
 public:
-    constexpr bool operator()(const BusStopPtrPair &lhs, const BusStopPtrPair &rhs) const
+    constexpr bool operator()(const StopPtrPair &lhs, const StopPtrPair &rhs) const
     {
         return lhs.first == rhs.first && lhs.second == rhs.second;
     }
@@ -82,35 +88,37 @@ public:
 
 public:
 
-    explicit TransportCatalogue(const std::vector<InputParser::Request>& requests);
+    using RouteParameters = std::tuple<std::string_view, double, int, std::size_t, std::size_t, bool>;
+    using StopParameters = std::tuple<std::string_view, std::vector<std::string_view>, bool>;
 
-    void RequestProcessing(const std::vector<InputParser::Request>& requests);
+    void AddStop(std::string& name, double x, double y);
+
+    void AddRoute(const std::string& name, std::vector<std::string>& stops);
+
+    void AddDistance(const std::string& name, std::string& another_name, int distance);
+
+    int GetDistance(const std::string& name, std::string& another_name);
+
+    int CalculateTrueRouteLength(const std::string& name);
+
+    [[nodiscard]] const StopParameters SearchStop(const std::string& stop_name) const;
+
+    [[nodiscard]] const RouteParameters SearchRoute(const std::string& route_name);
 
 private:
 
-    std::deque<BusStop> all_stops_;
-    std::unordered_map<std::string_view, BusStop*> stop_name_to_stop_;
+    std::deque<Stop> all_stops_;
+    std::unordered_map<std::string_view, Stop*> stop_name_to_stop_;
 
-    std::deque<BusRoute> all_routes_;
-    std::unordered_map<std::string_view, BusRoute*> route_name_to_route_;
+    std::deque<Route> all_routes_;
+    std::unordered_map<std::string_view, Route*> route_name_to_route_;
 
-    std::unordered_map<BusStop*, std::unordered_set<BusRoute*>> stop_name_to_route_set_;
+    std::unordered_map<Stop*, std::unordered_set<Route*>> stop_name_to_route_set_;
 
-    std::unordered_map<BusStopPtrPair, int, BusStopPtrHash, BusStopPtrPairEqualKey> all_distances_;
+    std::unordered_map<StopPtrPair, int, StopPtrHash, StopPtrPairEqualKey> all_distances_;
 
-    void ProcessOneRequest(const InputParser::Request& req);
-
-    void AddNewBusStop(const InputParser::Request& new_stop);
-
-    void AddNewBusRoute(const InputParser::Request& new_route);
-
-    void ProcessDistanceInRequest(const InputParser::Request& new_stop);
-
-    [[nodiscard]] const std::pair<BusStop*, std::unordered_set<BusRoute*>> SearchBusStop(const std::string& stop_name) const;
-
-    [[nodiscard]] const BusRoute& SearchBusRoute(const std::string& route_name);
-
-    int CalculateTrueRouteLengthForRoute(BusRoute* route);
+    std::deque<RouteAdditionalParameters> all_route_parameters_;
+    std::unordered_map<std::string_view, RouteAdditionalParameters*> route_name_to_additional_parameters_;
 
 };
 

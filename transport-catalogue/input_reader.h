@@ -4,6 +4,8 @@
 #include <vector>
 #include <string_view>
 
+#include "transport_catalogue.h"
+
 using namespace std::literals;
 
 namespace transport_catalogue {
@@ -30,9 +32,15 @@ public:
         std::vector<std::string> req_body;
     };
 
+    explicit InputParser(::transport_catalogue::TransportCatalogue* catalogue_ptr);
+
     std::vector<Request> ParseFromStream(std::istream& input);
 
+    void ProcessRequests(const std::vector<Request>& requests);
+
 private:
+
+    TransportCatalogue* catalogue_ptr_;
 
     Request ParseLine(std::string_view line);
 
