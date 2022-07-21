@@ -78,16 +78,16 @@ void StatParser::PrintRoute(const std::string& name) const {
     // Bus 751: not found
     // Bus 750: 7 stops on route, 3 unique stops, 27400 route length, 1.30853 curvature
 
-    auto result = catalogue_ptr_->SearchRoute(name);
+    const auto result = catalogue_ptr_->SearchRoute(name);
 
-    if (!std::get<5>(result)) {
-        std::cout << "Bus " << std::string(std::get<0>(result)) << ": not found" << std::endl;
+    if (!result.is_found) {
+        std::cout << "Bus " << std::string(result.name) << ": not found" << std::endl;
         return;
     } else {
-        std::cout << "Bus " << std::string(std::get<0>(result)) << ": "
-        << std::get<3>(result)  << " stops on route, " <<
-        std::get<4>(result) << " unique stops, " << std::setprecision(6) << std::get<2>(result) <<
-        " route length, "<< double(std::get<2>(result) / std::get<1>(result)) << " curvature"<< std::endl;
+        std::cout << "Bus " << std::string(result.name) << ": "
+        << result.route_size  << " stops on route, " <<
+        result.unique_stops << " unique stops, " << std::setprecision(6) << result.true_route_length <<
+        " route length, "<< double(result.true_route_length / result.geo_route_length) << " curvature"<< std::endl;
     }
 
 }
@@ -100,25 +100,25 @@ void StatParser::PrintStop(const std::string& name) const {
     //  Stop Prazhskaya: no buses
     //  Stop Biryulyovo Zapadnoye: buses 256 828
 
-    auto result = catalogue_ptr_->SearchStop(name);
+    const auto result = catalogue_ptr_->SearchStop(name);
 
-    if (std::get<2>(result) && !std::get<1>(result).empty()) {
-        std::cout << "Stop " << std::string(std::get<0>(result)) << ": buses";
+    if (result.is_found && !result.route_names_at_stop.empty()) {
+        std::cout << "Stop " << std::string(result.name) << ": buses";
 
-        for (auto i : std::get<1>(result)) {
+        for (auto i : result.route_names_at_stop) {
             std::cout << ' ' << std::string(i);
         }
         std::cout << std::endl;
 
     }
-    if (std::get<2>(result) && std::get<1>(result).empty()) {
+    if (result.is_found && result.route_names_at_stop.empty()) {
 
-        std::cout << "Stop " << std::string(std::get<0>(result)) <<  ": no buses" << std::endl;
+        std::cout << "Stop " << std::string(result.name) <<  ": no buses" << std::endl;
         return;
 
     }
-    if (!std::get<2>(result)) {
-        std::cout << "Stop " << std::string(std::get<0>(result)) << ": not found" << std::endl;
+    if (!result.is_found) {
+        std::cout << "Stop " << std::string(result.name) << ": not found" << std::endl;
         return;
     }
 

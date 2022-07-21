@@ -17,11 +17,11 @@ class TransportCatalogue {
 
 struct Stop {
 
-    Stop(const std::string& name, double x, double y)
-        : name(name), map_point(Coordinates{x, y})
+    Stop(const std::string& name, Coordinates geo_map_point)
+        : name(name), map_point(geo_map_point)
     {
-        assert(double(-90.0) <= x && x <= double(90.0));
-        assert(double(-180.0) <= y && y <= double(180.0));
+        assert(double(-90.0) <= geo_map_point.lat && geo_map_point.lat <= double(90.0));
+        assert(double(-180.0) <= geo_map_point.lng && geo_map_point.lng <= double(180.0));
     }
 
     bool operator==(const Stop& other);
@@ -62,6 +62,25 @@ struct RouteAdditionalParameters {
 
 };
 
+struct StopSearchResponse {
+
+    std::string_view name;
+    std::vector<std::string_view> route_names_at_stop;
+    bool is_found;
+
+};
+
+struct RouteSearchResponse {
+
+    std::string_view name;
+    double geo_route_length;
+    int true_route_length;
+    std::size_t unique_stops;
+    std::size_t route_size;
+    bool is_found;
+
+};
+
 struct StopPtrHash {
     size_t operator()(const std::pair<Stop*, Stop*>& p) const {
         auto hash1 = std::hash<const void *>{}(p.first);
@@ -88,22 +107,19 @@ public:
 
 public:
 
-    using RouteParameters = std::tuple<std::string_view, double, int, std::size_t, std::size_t, bool>;
-    using StopParameters = std::tuple<std::string_view, std::vector<std::string_view>, bool>;
+    void AddStop(const std::string& name, Coordinates map_point);
 
-    void AddStop(std::string& name, double x, double y);
+    void AddRoute(const std::string& name, const std::vector<std::string>& stops);
 
-    void AddRoute(const std::string& name, std::vector<std::string>& stops);
+    void AddDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance);
 
-    void AddDistance(const std::string& name, std::string& another_name, int distance);
-
-    int GetDistance(const std::string& name, std::string& another_name);
+    int GetDistance(const std::string& stop_name_from, const std::string& stop_name_to);
 
     int CalculateTrueRouteLength(const std::string& name);
 
-    [[nodiscard]] const StopParameters SearchStop(const std::string& stop_name) const;
+    [[nodiscard]] const StopSearchResponse SearchStop(const std::string& stop_name) const;
 
-    [[nodiscard]] const RouteParameters SearchRoute(const std::string& route_name);
+    [[nodiscard]] const RouteSearchResponse SearchRoute(const std::string& route_name);
 
 private:
 

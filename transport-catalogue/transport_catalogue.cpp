@@ -12,11 +12,11 @@
 
 namespace transport_catalogue {
 
-void TransportCatalogue::AddStop(std::string& name, double x, double y) {
+void TransportCatalogue::AddStop(const std::string& name, Coordinates map_point) {
 
         assert(!name.empty()); // check name not empty
 
-        Stop stop(name, x, y);
+        Stop stop(name, map_point);
 
         all_stops_.push_back(std::move(stop));
         Stop* stop_ptr = &(all_stops_.back());
@@ -27,18 +27,20 @@ void TransportCatalogue::AddStop(std::string& name, double x, double y) {
 
 }
 
-void TransportCatalogue::AddDistance(const std::string& name, std::string& another_name, int distance) {
+void TransportCatalogue::AddDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance) {
 
-    assert(!name.empty());
+    assert(!stop_name_from.empty());
+    assert(!stop_name_to.empty());
+    assert(distance >= 0);
 
-    StopPtrPair  tmp = {stop_name_to_stop_[std::string_view(name)],
-                stop_name_to_stop_[std::string_view(another_name)]};
+    StopPtrPair  key = {stop_name_to_stop_[std::string_view(stop_name_from)],
+                stop_name_to_stop_[std::string_view(stop_name_to)]};
 
-    all_distances_[tmp] = distance;
+    all_distances_[key] = distance;
 
 }
 
-void TransportCatalogue::AddRoute(const std::string &name, std::vector <std::string> &stops) {
+void TransportCatalogue::AddRoute(const std::string &name, const std::vector <std::string> &stops) {
 
     assert(!name.empty()); // check number of args
 
@@ -62,40 +64,37 @@ void TransportCatalogue::AddRoute(const std::string &name, std::vector <std::str
 
 }
 
-using StopParameters = std::tuple<std::string_view, std::vector<std::string_view>, bool>;
-
-const StopParameters TransportCatalogue::SearchStop(const std::string& stop_name) const {
+const TransportCatalogue::StopSearchResponse TransportCatalogue::SearchStop(const std::string& stop_name) const {
 
     if (stop_name_to_stop_.count(std::string_view(stop_name)) != 0) {
 
         auto stop_ptr = stop_name_to_stop_.at(std::string_view(stop_name));
 
-        std::vector<std::string_view> tmp;
+        std::vector<std::string_view> routes_names;
 
         for (auto i : stop_name_to_route_set_.at(stop_ptr)) {
-            tmp.push_back(std::string_view(i->name));
+            routes_names.push_back(std::string_view(i->name));
         }
-        std::sort(tmp.begin(), tmp.end());
-        StopParameters result{std::string_view(stop_ptr->name), std::move(tmp), true};
+        std::sort(routes_names.begin(), routes_names.end());
+        StopSearchResponse result{std::string_view(stop_ptr->name), std::move(routes_names), true};
 
         return result;
 
     } else {
 
-        StopParameters dummy_stop{std::string_view(stop_name), std::vector<std::string_view>(), false};
+        StopSearchResponse dummy_stop{std::string_view(stop_name), std::vector<std::string_view>(), false};
         return dummy_stop;
 
     }
 
 }
 
-using RouteParameters = std::tuple<std::string_view, double, int, std::size_t, std::size_t, bool>;
 
-const RouteParameters TransportCatalogue::SearchRoute(const std::string& route_name) {
+const TransportCatalogue::RouteSearchResponse TransportCatalogue::SearchRoute(const std::string& route_name) {
 
     if (route_name_to_route_.count(std::string_view(route_name)) != 0) {
 
-        Route& tmp = *route_name_to_route_.at(std::string_view(route_name));
+        Route& found_route = *route_name_to_route_.at(std::string_view(route_name));
 
         RouteAdditionalParameters& params = *route_name_to_additional_parameters_.at(std::string_view(route_name));
 
@@ -109,16 +108,17 @@ const RouteParameters TransportCatalogue::SearchRoute(const std::string& route_n
             params.CalculateUniqueStops();
         }
         if (params.true_route_length == 0) {
-            CalculateTrueRouteLength(tmp.name);
+            CalculateTrueRouteLength(found_route.name);
         }
 
-        RouteParameters result{std::string_view(tmp.name), params.geo_route_length,
-                               params.true_route_length, params.route_size, params.unique_stops, true};
+        RouteSearchResponse result{std::string_view(found_route.name), params.geo_route_length,
+                               params.true_route_length, params.unique_stops,
+                               params.route_size, true};
         return result;
 
     } else {
 
-        RouteParameters dummy_route{std::string_view(route_name), 0, 0, 0, 0, false};
+        RouteSearchResponse dummy_route{std::string_view(route_name), 0, 0, 0, 0, false};
         return dummy_route;
     }
 }
@@ -134,16 +134,16 @@ double TransportCatalogue::RouteAdditionalParameters::CalculateGeoRouteLength() 
 
 std::size_t TransportCatalogue::RouteAdditionalParameters::CalculateUniqueStops() {
 
-    std::vector<std::string_view> tmp;
+    std::vector<std::string_view> stops_names;
 
     for (auto i : route_ptr->stops) {
         auto str = std::string_view(i->name);
-        if (std::count(tmp.begin(), tmp.end(), str) == 0) {
-            tmp.push_back(str);
+        if (std::count(stops_names.begin(), stops_names.end(), str) == 0) {
+            stops_names.push_back(str);
         }
     }
 
-    unique_stops = tmp.size();
+    unique_stops = stops_names.size();
 
     return unique_stops;
 }
@@ -158,17 +158,17 @@ std::size_t TransportCatalogue::RouteAdditionalParameters::CalculateRouteSize() 
     return route_ptr->stops.size();
 }
 
-int TransportCatalogue::GetDistance(const std::string& name, std::string& another_name) {
-    auto tmp = StopPtrPair{stop_name_to_stop_.at(std::string_view(name)),
-                           stop_name_to_stop_.at(std::string_view(another_name))};
+int TransportCatalogue::GetDistance(const std::string& stop_name_from, const std::string& stop_name_to) {
+    auto key = StopPtrPair{stop_name_to_stop_.at(std::string_view(stop_name_from)),
+                           stop_name_to_stop_.at(std::string_view(stop_name_to))};
 
-    if (all_distances_.count(tmp) != 0) {
-        return all_distances_.at(tmp);
+    if (all_distances_.count(key) != 0) {
+        return all_distances_.at(key);
     } else {
-        auto tmp2 = StopPtrPair{stop_name_to_stop_.at(std::string_view(another_name)),
-                                stop_name_to_stop_.at(std::string_view(name))};
+        auto reversed_key = StopPtrPair{stop_name_to_stop_.at(std::string_view(stop_name_to)),
+                                stop_name_to_stop_.at(std::string_view(stop_name_from))};
 
-        return all_distances_.at(tmp2);
+        return all_distances_.at(reversed_key);
     }
 
 }
@@ -176,15 +176,15 @@ int TransportCatalogue::GetDistance(const std::string& name, std::string& anothe
 int TransportCatalogue::CalculateTrueRouteLength(const std::string& name) {
 
     if (route_name_to_additional_parameters_.count(std::string_view(name)) != 0) {
-        RouteAdditionalParameters& tmp = *route_name_to_additional_parameters_.at(std::string_view(name));
+        RouteAdditionalParameters& params_ref = *route_name_to_additional_parameters_.at(std::string_view(name));
 
-        for (auto i = 0 ; i < tmp.route_ptr->stops.size() - 1 ; ++i) {
+        for (auto i = 0 ; i < params_ref.route_ptr->stops.size() - 1 ; ++i) {
 
-            tmp.true_route_length += GetDistance(tmp.route_ptr->stops[i]->name,
-                                                  tmp.route_ptr->stops[i + 1]->name);
+            params_ref.true_route_length += GetDistance(params_ref.route_ptr->stops[i]->name,
+                                                        params_ref.route_ptr->stops[i + 1]->name);
 
         }
-        return tmp.true_route_length;
+        return params_ref.true_route_length;
     }
 
     return 0;

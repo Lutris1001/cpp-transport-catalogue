@@ -181,7 +181,7 @@ void InputParser::ProcessRequests(const std::vector<Request>& requests) {
     for (auto i : requests) {
         if (i.req_type == InputParser::RequestType::ADD_STOP) {
             //ProcessOneRequest(i);
-            catalogue_ptr_->AddStop(i.req_body[0], std::stod(i.req_body[1]), std::stod(i.req_body[2]));
+            catalogue_ptr_->AddStop(i.req_body[0], Coordinates{std::stod(i.req_body[1]), std::stod(i.req_body[2])});
         }
     }
 
