@@ -31,7 +31,8 @@ static void ParseDistances(InputParser::Request& req, std::string_view& distance
 
             req.req_body.push_back(std::string(distance_line.substr(0, last_digit)));
 
-            distance_line.remove_prefix(std::min(distance_line.find_first_not_of(' ', last_digit + 1) + 2, distance_line.size()));
+            distance_line.remove_prefix(std::min(distance_line.find_first_not_of(' ', last_digit + 1) + 2,
+                                                 distance_line.size()));
             distance_line.remove_prefix(std::min(distance_line.find_first_not_of(' '), distance_line.size()));
 
             std::string_view two = (distance_line.substr(pos));
@@ -47,12 +48,14 @@ static void ParseDistances(InputParser::Request& req, std::string_view& distance
             req.req_body.push_back(std::string(tmp.substr(0, last_digit)));
 
             tmp.remove_prefix(distance_line.find_first_not_of(' ',
-                                                              (distance_line.find_first_not_of(' ', last_digit + 1) + 2)));
+                                                              (distance_line.find_first_not_of(' ',
+                                                              last_digit + 1) + 2)));
             tmp.remove_suffix(tmp.size() - tmp.find_last_not_of(' ') - 1);
 
             req.req_body.push_back(std::string(tmp));
         }
-        distance_line.remove_prefix(std::min(distance_line.find_first_not_of(" ,", space), distance_line.size()));
+        distance_line.remove_prefix(std::min(distance_line.find_first_not_of(" ,", space),
+                                             distance_line.size()));
     }
 
 }
@@ -180,8 +183,9 @@ void InputParser::ProcessRequests(const std::vector<Request>& requests) {
     // Adding stops to catalogue
     for (auto i : requests) {
         if (i.req_type == InputParser::RequestType::ADD_STOP) {
-            //ProcessOneRequest(i);
-            catalogue_ptr_->AddStop(i.req_body[0], Coordinates{std::stod(i.req_body[1]), std::stod(i.req_body[2])});
+            catalogue_ptr_->AddStop(i.req_body[0],
+                                    Coordinates{std::stod(i.req_body[1]),
+                                                std::stod(i.req_body[2])});
         }
     }
 
@@ -189,9 +193,9 @@ void InputParser::ProcessRequests(const std::vector<Request>& requests) {
     for (auto i : requests) {
         if (i.req_type == InputParser::RequestType::ADD_STOP) {
             for (int j = 3; j < i.req_body.size() - 1; j += 2) {
-
-                catalogue_ptr_->AddDistance(i.req_body[0], i.req_body[j + 1], std::stoi(i.req_body[j]));
-
+                catalogue_ptr_->AddDistance(i.req_body[0],
+                                            i.req_body[j + 1],
+                                            std::stoi(i.req_body[j]));
             }
         }
     }
@@ -199,7 +203,6 @@ void InputParser::ProcessRequests(const std::vector<Request>& requests) {
     // Adding routes to catalogue
     for (auto i : requests) {
         if (i.req_type == InputParser::RequestType::ADD_ROUTE) {
-            //ProcessOneRequest(i, catalogue);
 
             std::vector<std::string> tmp;
 
@@ -210,13 +213,13 @@ void InputParser::ProcessRequests(const std::vector<Request>& requests) {
                 for (auto j = i.req_body.size() - 2 ; j >= 1 ; --j) {
                     tmp.push_back(i.req_body[j]);
                 }
+                catalogue_ptr_->AddRoute(i.req_body[0], tmp, false);
             } else {
                 for (auto j = 1; j < i.req_body.size(); ++j) {
                     tmp.push_back(i.req_body[j]);
                 }
+                catalogue_ptr_->AddRoute(i.req_body[0], tmp, true);
             }
-
-            catalogue_ptr_->AddRoute(i.req_body[0], tmp);
         }
     }
 
