@@ -1,7 +1,6 @@
 
 #include "transport_catalogue.h"
 #include "stat_reader.h"
-//#include "input_reader.h"
 
 #include <iostream>
 #include <iomanip>
