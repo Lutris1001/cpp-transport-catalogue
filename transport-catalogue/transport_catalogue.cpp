@@ -1,29 +1,28 @@
-
-#include "input_reader.h"
-#include "transport_catalogue.h"
-#include "geo.h"
-
 #include <cassert>
 #include <string_view>
 #include <algorithm>
-#include <string>
-#include <unordered_set>
 #include <tuple>
+
+#include "transport_catalogue.h"
+#include "geo.h"
+#include "domain.h"
 
 namespace transport_catalogue {
 
+using namespace domain;
+
 void TransportCatalogue::AddStop(const std::string& name, Coordinates map_point) {
 
-        assert(!name.empty()); // check name not empty
+    assert(!name.empty()); // check name not empty
 
-        Stop stop(name, map_point);
+    Stop stop(name, map_point);
 
-        all_stops_.push_back(std::move(stop));
-        Stop* stop_ptr = &(all_stops_.back());
+    all_stops_.push_back(std::move(stop));
+    Stop* stop_ptr = &(all_stops_.back());
 
-        stop_name_to_stop_[std::string_view(stop_ptr->name)] = stop_ptr;
+    stop_name_to_stop_[std::string_view(stop_ptr->name)] = stop_ptr;
 
-        stop_name_to_route_set_[stop_ptr];
+    stop_name_to_route_set_[stop_ptr];
 
 }
 
@@ -40,11 +39,13 @@ void TransportCatalogue::AddDistance(const std::string& stop_name_from, const st
 
 }
 
-void TransportCatalogue::AddRoute(const std::string &name, const std::vector <std::string> &stops) {
+void TransportCatalogue::AddRoute(const std::string &name, const std::vector <std::string> &stops, bool is_round) {
 
     assert(!name.empty()); // check number of args
 
     Route route(name);
+
+    route.is_roundtrip = is_round;
 
     all_routes_.push_back(std::move(route));
     Route* route_ptr = &(all_routes_.back());
@@ -123,41 +124,6 @@ const TransportCatalogue::RouteSearchResponse TransportCatalogue::SearchRoute(co
     }
 }
 
-double TransportCatalogue::RouteAdditionalParameters::CalculateGeoRouteLength() {
-
-    for (auto i = 0 ; i < route_ptr->stops.size() - 1 ; ++i) {
-        geo_route_length += ComputeDistance(route_ptr->stops[i]->map_point, route_ptr->stops[i + 1]->map_point);
-    }
-
-    return geo_route_length;
-}
-
-std::size_t TransportCatalogue::RouteAdditionalParameters::CalculateUniqueStops() {
-
-    std::vector<std::string_view> stops_names;
-
-    for (auto i : route_ptr->stops) {
-        auto str = std::string_view(i->name);
-        if (std::count(stops_names.begin(), stops_names.end(), str) == 0) {
-            stops_names.push_back(str);
-        }
-    }
-
-    unique_stops = stops_names.size();
-
-    return unique_stops;
-}
-
-bool TransportCatalogue::Stop::operator==(const Stop& other) {
-    return name == other.name;
-}
-
-
-std::size_t TransportCatalogue::RouteAdditionalParameters::CalculateRouteSize() {
-    route_size = route_ptr->stops.size();
-    return route_ptr->stops.size();
-}
-
 int TransportCatalogue::GetDistance(const std::string& stop_name_from, const std::string& stop_name_to) {
     auto key = StopPtrPair{stop_name_to_stop_.at(std::string_view(stop_name_from)),
                            stop_name_to_stop_.at(std::string_view(stop_name_to))};
@@ -190,9 +156,21 @@ int TransportCatalogue::CalculateTrueRouteLength(const std::string& name) {
     return 0;
 }
 
-    TransportCatalogue::RouteAdditionalParameters::RouteAdditionalParameters(Route * ptr)
-        : route_ptr(ptr)
-    {
+std::map<std::string, const Route*> TransportCatalogue::GetAllRoutesPtr() const {
+
+    if (all_routes_.empty()) {
+        return {};
     }
+
+    std::map<std::string, const Route*> result;
+    for (const auto& i : all_routes_) {
+        result[i.name] = const_cast<Route*>(&i);
+    }
+    return result;
+}
+
+bool TransportCatalogue::IsStopExist(const std::string_view& name) const {
+    return stop_name_to_stop_.count(name) != 0;
+}
 
 } // end of namespace: transport_catalogue

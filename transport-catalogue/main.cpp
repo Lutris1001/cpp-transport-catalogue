@@ -1,27 +1,22 @@
 #include <iostream>
-#include "transport_catalogue.h"
-#include "input_reader.h"
-#include "stat_reader.h"
 
-using namespace transport_catalogue;
+#include "json_reader.h"
+#include "transport_catalogue.h"
+
+
 
 int main() {
 
-    // Initialization: Empty catalogue;
-    TransportCatalogue catalogue;
+    transport_catalogue::TransportCatalogue catalogue;
+    
+    JsonReader reader(&catalogue);
 
-    TransportCatalogue* ptr = &catalogue;
+    reader.ReadJSON(std::cin);
 
-    // Initialization: Parser for Catalogue;
-    InputParser parser(ptr);
-    auto requsts = parser.ParseFromStream(std::cin);
-    parser.ProcessRequests(requsts);
+    reader.FillCatalogue();
 
-    // Initialization: Parser to process Queries to Catalogue;
-    StatParser query_processor(ptr);
+    reader.ProcessRequests();
 
-    // Processing Queries to Catalogue and output result;
-    query_processor.ProcessQueries(std::cin);
-
-    return 0;
+    reader.PrintResponses(std::cout);
+    
 }

@@ -5,62 +5,20 @@
 #include <vector>
 #include <unordered_map>
 #include <deque>
+#include <map>
 #include <unordered_set>
+#include <optional>
 
 //#include "input_reader.h"
 #include "geo.h"
-
+#include "domain.h"
 
 namespace transport_catalogue {
 
+using namespace geo;
+using namespace domain;
+    
 class TransportCatalogue {
-
-struct Stop {
-
-    Stop(const std::string& name, Coordinates geo_map_point)
-        : name(name), map_point(geo_map_point)
-    {
-        assert(double(-90.0) <= geo_map_point.lat && geo_map_point.lat <= double(90.0));
-        assert(double(-180.0) <= geo_map_point.lng && geo_map_point.lng <= double(180.0));
-    }
-
-    bool operator==(const Stop& other);
-
-    std::string name;
-    Coordinates map_point;
-};
-
-struct Route {
-
-    Route(const std::string& name)
-        : name(name)
-    {
-        assert(!name.empty());
-    }
-
-    std::vector<Stop*> stops;
-    std::string name;
-
-};
-
-struct RouteAdditionalParameters {
-
-    Route* route_ptr = nullptr;
-
-    // These parameters will be calculated only if needed
-
-    double geo_route_length = 0;
-    int true_route_length = 0;
-    std::size_t unique_stops = 0;
-    std::size_t route_size = 0;
-
-    RouteAdditionalParameters(Route* ptr);
-
-    double CalculateGeoRouteLength();
-    std::size_t CalculateUniqueStops();
-    std::size_t CalculateRouteSize();
-
-};
 
 struct StopSearchResponse {
 
@@ -102,18 +60,21 @@ public:
     {
         return lhs.first == rhs.first && lhs.second == rhs.second;
     }
-
 };
 
 public:
 
     void AddStop(const std::string& name, Coordinates map_point);
 
-    void AddRoute(const std::string& name, const std::vector<std::string>& stops);
+    void AddRoute(const std::string& name, const std::vector<std::string>& stops, bool is_round);
 
     void AddDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance);
 
     int GetDistance(const std::string& stop_name_from, const std::string& stop_name_to);
+
+    std::map<std::string, const Route*> GetAllRoutesPtr() const;
+
+    bool IsStopExist(const std::string_view& name) const;
 
     int CalculateTrueRouteLength(const std::string& name);
 
