@@ -17,8 +17,6 @@ namespace transport_catalogue {
 
 using namespace geo;
 using namespace domain;
-    
-class TransportCatalogue {
 
 struct StopSearchResponse {
 
@@ -38,6 +36,8 @@ struct RouteSearchResponse {
     bool is_found;
 
 };
+
+class TransportCatalogue {
 
 struct StopPtrHash {
     size_t operator()(const std::pair<Stop*, Stop*>& p) const {
@@ -75,6 +75,8 @@ public:
     std::map<std::string, const Route*> GetAllRoutesPtr() const;
 
     bool IsStopExist(const std::string_view& name) const;
+
+    const Route* GetRoutePtr(const std::string_view& route_name) const;
 
     int CalculateTrueRouteLength(const std::string& name);
 

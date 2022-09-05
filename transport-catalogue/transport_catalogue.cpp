@@ -52,11 +52,11 @@ void TransportCatalogue::AddRoute(const std::string &name, const std::vector <st
 
     route_name_to_route_[std::string_view(route_ptr->name)] = route_ptr;
 
-    for (auto i : stops) {
+    for (const auto& i : stops) {
         route_ptr->stops.push_back(stop_name_to_stop_.at(std::string_view(i)));
     }
 
-    for (auto i : route_ptr->stops) {
+    for (const auto& i : route_ptr->stops) {
         stop_name_to_route_set_[i].insert(route_ptr);
     }
 
@@ -65,7 +65,7 @@ void TransportCatalogue::AddRoute(const std::string &name, const std::vector <st
 
 }
 
-const TransportCatalogue::StopSearchResponse TransportCatalogue::SearchStop(const std::string& stop_name) const {
+const transport_catalogue::StopSearchResponse TransportCatalogue::SearchStop(const std::string& stop_name) const {
 
     if (stop_name_to_stop_.count(std::string_view(stop_name)) != 0) {
 
@@ -91,7 +91,7 @@ const TransportCatalogue::StopSearchResponse TransportCatalogue::SearchStop(cons
 }
 
 
-const TransportCatalogue::RouteSearchResponse TransportCatalogue::SearchRoute(const std::string& route_name) {
+const transport_catalogue::RouteSearchResponse TransportCatalogue::SearchRoute(const std::string& route_name) {
 
     if (route_name_to_route_.count(std::string_view(route_name)) != 0) {
 
@@ -171,6 +171,10 @@ std::map<std::string, const Route*> TransportCatalogue::GetAllRoutesPtr() const 
 
 bool TransportCatalogue::IsStopExist(const std::string_view& name) const {
     return stop_name_to_stop_.count(name) != 0;
+}
+
+const Route* TransportCatalogue::GetRoutePtr(const std::string_view& route_name) const {
+    return const_cast<Route*>(route_name_to_route_.at(route_name));
 }
 
 } // end of namespace: transport_catalogue

@@ -12,6 +12,8 @@
 using namespace json;
 using namespace std::literals;
 
+namespace renderer {
+
 MapRenderer::MapRenderer(transport_catalogue::TransportCatalogue* ptr)
     : catalogue_(ptr)
 {
@@ -33,7 +35,7 @@ void MapRenderer::CreateSphereProjector() {
 
 }
 
-void MapRenderer::ProcessRoutes() {
+void MapRenderer::RenderRoutes() {
 
     assert(projector_);
 
@@ -67,7 +69,7 @@ void MapRenderer::ProcessRoutes() {
     }
 }
 
-void MapRenderer::ProcessRoutesNames() {
+void MapRenderer::RenderRoutesNames() {
 
     assert(projector_);
 
@@ -115,7 +117,7 @@ void MapRenderer::ProcessRoutesNames() {
     }
 }
 
-void MapRenderer::ProcessStopsCircles() {
+void MapRenderer::RenderStopsCircles() {
 
     assert(projector_);
 
@@ -129,7 +131,7 @@ void MapRenderer::ProcessStopsCircles() {
 
 }
 
-void MapRenderer::ProcessStopsNames() {
+void MapRenderer::RenderStopsNames() {
 
     assert(projector_);
 
@@ -228,16 +230,22 @@ void MapRenderer::ReadSettings(JsonReader* ptr) {
     }
 }
 
-std::ostream& MapRenderer::GetCompliteMap(std::ostream& output) {
+std::ostream& MapRenderer::GetCompleteMap(std::ostream& output) {
 
     Fill();
     CreateSphereProjector();
-    ProcessRoutes();
-    ProcessRoutesNames();
-    ProcessStopsCircles();
-    ProcessStopsNames();
+    RenderRoutes();
+    RenderRoutesNames();
+    RenderStopsCircles();
+    RenderStopsNames();
 
     RenderRouteMap(output);
 
     return output;
 }
+
+const svg::Document& MapRenderer::GetMapDocumentRef() const {
+    return picture_;
+}
+
+} // end namespace renderer

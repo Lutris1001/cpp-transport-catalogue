@@ -17,6 +17,8 @@
 using namespace json;
 using namespace std::literals;
 
+namespace renderer {
+
 struct Settings {
     double width = 0;
     double height = 0;
@@ -86,29 +88,31 @@ public:
 };
 
 class MapRenderer {
-    
+
 public:
 
     void ReadSettings(JsonReader* ptr);
-    
+
     explicit MapRenderer(transport_catalogue::TransportCatalogue* ptr);
-    
-    void ProcessRoutes();
 
-    void ProcessRoutesNames();
+    void RenderRoutes();
 
-    void ProcessStopsCircles();
+    void RenderRoutesNames();
 
-    void ProcessStopsNames();
+    void RenderStopsCircles();
+
+    void RenderStopsNames();
 
     void CreateSphereProjector();
 
     void Fill();
 
-    std::ostream& GetCompliteMap(std::ostream& output);
-    
+    std::ostream& GetCompleteMap(std::ostream& output);
+
     std::ostream& RenderRouteMap(std::ostream& output);
-    
+
+    const svg::Document& GetMapDocumentRef() const;
+
 private:
 
     Settings settings_;
@@ -122,3 +126,5 @@ private:
     [[nodiscard]] static svg::Color ParseColor(const json::Node& node);
 
 };
+
+} // end namespace renderer

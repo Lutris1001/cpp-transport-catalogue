@@ -28,6 +28,20 @@ private:
     json::Document all_objects_ = json::Document(json::Node());
     transport_catalogue::TransportCatalogue* catalogue_ptr_;
     json::Array responses_;
+
+    void AddOneStop(const json::Dict& request);
+    void AddAllStops();
+
+    void AddOneDistance(const json::Dict& request);
+    void AddAllDistances();
+
+    void AddOneRoute(const json::Dict& request);
+    void AddAllRoutes();
+
+    void ProcessStopRequest(const json::Dict& request);
+    void ProcessRouteRequest(const json::Dict& request);
+    void ProcessMapRequest(const json::Dict& request);
+
 };
 
 

@@ -7,35 +7,35 @@ using namespace std;
 namespace json {
 
     bool Node::IsInt() const {
-        return std::holds_alternative<int>(value_);
+        return std::holds_alternative<int>(*this);
     }
 
     bool Node::IsDouble() const {
-        return std::holds_alternative<int>(value_) || std::holds_alternative<double>(value_);
+        return std::holds_alternative<int>(*this) || std::holds_alternative<double>(*this);
     }
 
     bool Node::IsPureDouble() const {
-        return std::holds_alternative<double>(value_);
+        return std::holds_alternative<double>(*this);
     }
 
     bool Node::IsBool() const {
-        return std::holds_alternative<bool>(value_);
+        return std::holds_alternative<bool>(*this);
     }
 
     bool Node::IsString() const {
-        return std::holds_alternative<std::string>(value_);
+        return std::holds_alternative<std::string>(*this);
     }
 
     bool Node::IsNull() const {
-        return std::holds_alternative<std::nullptr_t>(value_);
+        return std::holds_alternative<std::nullptr_t>(*this);
     }
 
     bool Node::IsArray() const {
-        return std::holds_alternative<Array>(value_);
+        return std::holds_alternative<Array>(*this);
     }
 
     bool Node::IsMap() const {
-        return std::holds_alternative<Dict>(value_);
+        return std::holds_alternative<Dict>(*this);
     }
 
 
@@ -43,14 +43,14 @@ namespace json {
         if (!IsInt()) {
             throw std::logic_error("Logic_error"s);
         }
-        return std::get<int>(value_);
+        return std::get<int>(*this);
     }
 
     bool Node::AsBool() const {
         if (!IsBool()) {
             throw std::logic_error("Logic_error"s);
         }
-        return std::get<bool>(value_);
+        return std::get<bool>(*this);
     }
 
     double Node::AsDouble() const {
@@ -58,30 +58,30 @@ namespace json {
             throw std::logic_error("Logic_error"s);
         }
         if (IsInt()) {
-            return static_cast<double>(std::get<int>(value_));
+            return static_cast<double>(std::get<int>(*this));
         }
-        return std::get<double>(value_);
+        return std::get<double>(*this);
     }
 
     const std::string& Node::AsString() const {
         if (!IsString()) {
             throw std::logic_error("Logic_error"s);
         }
-        return std::get<std::string>(value_);
+        return std::get<std::string>(*this);
     }
 
     const Array& Node::AsArray() const {
         if (!IsArray()) {
             throw std::logic_error("Logic_error"s);
         }
-        return std::get<Array>(value_);
+        return std::get<Array>(*this);
     }
 
     const Dict& Node::AsMap() const {
         if (!IsMap()) {
             throw std::logic_error("Logic_error"s);
         }
-        return std::get<Dict>(value_);
+        return std::get<Dict>(*this);
     }
 
 // ---------------- NODE LOAD PARSING -----------------
@@ -265,7 +265,7 @@ namespace json {
         static const std::string STRING_FALSE = "false"s;
 
         if (c == 't') {
-            for (int i = 1; i < 4; ++i) {
+            for (int i = 1; i < static_cast<int>(STRING_TRUE.size()); ++i) {
 
                 if (input.eof()) {
                     throw ParsingError("Failed to read bool from stream"s);
@@ -279,7 +279,7 @@ namespace json {
         }
 
         if (c == 'f') {
-            for (int i = 1; i < 5; ++i) {
+            for (int i = 1; i < static_cast<int>(STRING_FALSE.size()); ++i) {
                 if (input.eof()) {
                     throw ParsingError("Failed to read bool from stream"s);
                 }
@@ -291,25 +291,25 @@ namespace json {
             }
             return Node(bool{false});
         }
-        return Node();
+        return Node{};
     }
 
     Node LoadNull(istream& input) {
         char c;
 
-        static const std::string tmp = "null"s;
+        static const std::string STRING_NULL = "null"s;
 
-        for (int i = 0; i < 4; ++i) {
+        for (int i = 0; i < static_cast<int>(STRING_NULL.size()); ++i) {
             input >> c;
             if (input.eof()) {
                 throw ParsingError("Failed to read null from stream"s);
             }
-            if (c != tmp[i]) {
+            if (c != STRING_NULL[i]) {
                 throw ParsingError("Failed to read null from stream"s);
             }
         }
 
-        return Node();
+        return Node{};
     }
 
     Node LoadNode(istream& input) {
@@ -320,26 +320,30 @@ namespace json {
             throw ParsingError("Failed to read"s);
         }
 
-        if (c == '[') {
-            return LoadArray(input);
-        } else if (c == '{') {
-            return LoadDict(input);
-        } else if (c == 't' || c == 'f') {
-            input.putback(c);
-            return LoadBool(input);
-        } else if (c == 'n') {
-            input.putback(c);
-            return LoadNull(input);
-        } else if (c == '"') {
-            return Node(LoadString(input));
-        } else {
-            input.putback(c);
-            auto tmp = LoadNumber(input);
-            if (std::holds_alternative<int>(tmp)) {
-                return Node(std::get<int>(tmp)); // !!!!!
-            } else {
-                return Node(std::get<double>(tmp));
-            }
+        switch (c) {
+            case '[':
+                return LoadArray(input);
+            case '{':
+                return LoadDict(input);
+            case 't':
+                input.putback(c);
+                return LoadBool(input);
+            case 'f':
+                input.putback(c);
+                return LoadBool(input);
+            case 'n':
+                input.putback(c);
+                return LoadNull(input);
+            case '"':
+                return Node(LoadString(input));
+            default:
+                input.putback(c);
+                auto tmp = LoadNumber(input);
+                if (std::holds_alternative<int>(tmp)) {
+                    return Node(std::get<int>(tmp));
+                } else {
+                    return Node(std::get<double>(tmp));
+                }
         }
     }
 
