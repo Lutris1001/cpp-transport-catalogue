@@ -34,7 +34,7 @@ namespace json {
         return std::holds_alternative<Array>(*this);
     }
 
-    bool Node::IsMap() const {
+    bool Node::IsDict() const {
         return std::holds_alternative<Dict>(*this);
     }
 
@@ -77,8 +77,8 @@ namespace json {
         return std::get<Array>(*this);
     }
 
-    const Dict& Node::AsMap() const {
-        if (!IsMap()) {
+    const Dict& Node::AsDict() const {
+        if (!IsDict()) {
             throw std::logic_error("Logic_error"s);
         }
         return std::get<Dict>(*this);
@@ -256,7 +256,6 @@ namespace json {
         return Node(result);
     }
 
-
     Node LoadBool(istream& input) {
         char c;
         input >> c;
@@ -371,13 +370,13 @@ namespace json {
 
         void PrintIndent() const {
             for (int i = 0; i < indent; ++i) {
-                out << ' ';
+                out << "    ";
             }
         }
 
         // Возвращает новый контекст вывода с увеличенным смещением
         PrintContext Indented() const {
-            return {out, indent_step, indent_step + indent};
+            return {out, indent_step, indent + 1};
         }
     };
 
@@ -385,7 +384,7 @@ namespace json {
 
     void Print(const Document& doc, std::ostream& output) {
         auto root_node = doc.GetRoot();
-        PrintNode(root_node, PrintContext{output, 4, 0});
+        PrintNode(root_node, PrintContext{output});
     }
 
     // Шаблон, подходящий для вывода double и int

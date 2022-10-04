@@ -144,7 +144,7 @@ int TransportCatalogue::CalculateTrueRouteLength(const std::string& name) {
     if (route_name_to_additional_parameters_.count(std::string_view(name)) != 0) {
         RouteAdditionalParameters& params_ref = *route_name_to_additional_parameters_.at(std::string_view(name));
 
-        for (auto i = 0 ; i < params_ref.route_ptr->stops.size() - 1 ; ++i) {
+        for (auto i = 0 ; i < static_cast<int>(params_ref.route_ptr->stops.size() - 1) ; ++i) {
 
             params_ref.true_route_length += GetDistance(params_ref.route_ptr->stops[i]->name,
                                                         params_ref.route_ptr->stops[i + 1]->name);

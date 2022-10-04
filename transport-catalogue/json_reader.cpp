@@ -32,10 +32,10 @@ void JsonReader::FillCatalogue() {
     
 void JsonReader::ProcessRequests() {
     
-    const auto& stat_requests = all_objects_.GetRoot().AsMap().at("stat_requests"s).AsArray();
+    const auto& stat_requests = all_objects_.GetRoot().AsDict().at("stat_requests"s).AsArray();
     
     for (const auto& i : stat_requests) {
-        const auto& request = i.AsMap();
+        const auto& request = i.AsDict();
 
         if (request.at("type"s).AsString() == "Stop"s) {
             ProcessStopRequest(request);
@@ -71,10 +71,10 @@ void JsonReader::AddOneStop(const Dict& request) {
 
 void JsonReader::AddAllStops() {
 
-    const auto& base_requests = all_objects_.GetRoot().AsMap().at("base_requests"s).AsArray();
+    const auto& base_requests = all_objects_.GetRoot().AsDict().at("base_requests"s).AsArray();
 
     for (const auto& i : base_requests) {
-        const auto& request = i.AsMap();
+        const auto& request = i.AsDict();
         if (request.at("type"s).AsString() == "Stop"s) {
             AddOneStop(request);
         }
@@ -83,7 +83,7 @@ void JsonReader::AddAllStops() {
 
 void JsonReader::AddOneDistance(const Dict& request) {
 
-    const auto& distances = request.at("road_distances"s).AsMap();
+    const auto& distances = request.at("road_distances"s).AsDict();
     for (const auto& name_to_distance : distances) {
 
         catalogue_ptr_->AddDistance(request.at("name"s).AsString(),
@@ -95,10 +95,10 @@ void JsonReader::AddOneDistance(const Dict& request) {
 
 void JsonReader::AddAllDistances() {
 
-    const auto& base_requests = all_objects_.GetRoot().AsMap().at("base_requests"s).AsArray();
+    const auto& base_requests = all_objects_.GetRoot().AsDict().at("base_requests"s).AsArray();
 
     for (const auto& i : base_requests) {
-        const auto& request = i.AsMap();
+        const auto& request = i.AsDict();
         if (request.at("type"s).AsString() == "Stop"s) {
             AddOneDistance(request);
         }
@@ -140,11 +140,11 @@ void JsonReader::AddOneRoute(const Dict& request) {
 
 void JsonReader::AddAllRoutes() {
 
-    const auto& base_requests = all_objects_.GetRoot().AsMap().at("base_requests"s).AsArray();
+    const auto& base_requests = all_objects_.GetRoot().AsDict().at("base_requests"s).AsArray();
 
     for (const auto& i : base_requests) {
 
-        const auto& request = i.AsMap();
+        const auto& request = i.AsDict();
 
         if (request.at("type"s).AsString() == "Bus"s) {
             AddOneRoute(request);
@@ -164,14 +164,25 @@ void JsonReader::ProcessStopRequest(const Dict& request) {
             routes.push_back(Node(static_cast<std::string>(i)));
         }
 
-        responses_.push_back(Dict{{"buses"s, routes},
-                                  {"request_id"s, Node(request.at("id"s))}});
+        //responses_.push_back(Dict{{"buses"s, routes},
+                                  //{"request_id"s, Node(request.at("id"s))}});
+
+        responses_.push_back(Builder{}
+                            .StartDict()
+                            .Key("buses"s).Value(routes)
+                            .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                            .EndDict().Build());
         return;
     }
 
-    responses_.push_back(Dict{{"request_id"s, Node(request.at("id"s))},
-                              {"error_message"s, Node("not found"s)}});
+//    responses_.push_back(Dict{{"request_id"s, Node(request.at("id"s))},
+//                              {"error_message"s, Node("not found"s)}});
 
+    responses_.push_back(Builder{}
+                    .StartDict()
+                    .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                    .Key("error_message"s).Value(Node("not found"s).GetValue())
+                    .EndDict().Build());
 }
 
 void JsonReader::ProcessRouteRequest(const Dict& request) {
@@ -180,16 +191,33 @@ void JsonReader::ProcessRouteRequest(const Dict& request) {
 
     if (response.is_found) {
 
-        responses_.push_back(Dict{{"curvature"s, Node(response.true_route_length/response.geo_route_length)},
-                                  {"request_id"s, Node(request.at("id"s))},
-                                  {"route_length"s, Node(double(response.true_route_length))},
-                                  {"stop_count"s, Node(static_cast<int>(response.route_size))},
-                                  {"unique_stop_count"s, Node(static_cast<int>(response.unique_stops))}});
+//        responses_.push_back(Dict{{"curvature"s, Node(response.true_route_length/response.geo_route_length)},
+//                                  {"request_id"s, Node(request.at("id"s))},
+//                                  {"route_length"s, Node(double(response.true_route_length))},
+//                                  {"stop_count"s, Node(static_cast<int>(response.route_size))},
+//                                  {"unique_stop_count"s, Node(static_cast<int>(response.unique_stops))}});
+
+        responses_.push_back(Builder{}
+                        .StartDict()
+                        .Key("curvature"s).Value(Node(response.true_route_length/response.geo_route_length).GetValue())
+                        .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                        .Key("route_length"s).Value(Node(double(response.true_route_length)).GetValue())
+                        .Key("stop_count"s).Value(Node(static_cast<int>(response.route_size)).GetValue())
+                        .Key("unique_stop_count"s).Value(Node(static_cast<int>(response.unique_stops)).GetValue())
+                        .EndDict().Build());
+
+
         return;
     }
 
-    responses_.push_back(Dict{{"request_id"s, Node(request.at("id"s))},
-                              {"error_message"s, Node("not found"s)}});
+//    responses_.push_back(Dict{{"request_id"s, Node(request.at("id"s))},
+//                              {"error_message"s, Node("not found"s)}});
+
+    responses_.push_back(Builder{}
+                    .StartDict()
+                    .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                    .Key("error_message"s).Value(Node("not found"s).GetValue())
+                    .EndDict().Build());
 
 }
 
@@ -207,7 +235,13 @@ void JsonReader::ProcessMapRequest(const Dict& request) {
 
     std::string map_as_string = output.str();
 
-    responses_.push_back(Dict{{"map"s, Node(map_as_string)},
-                              {"request_id"s, Node(request.at("id"s))}});
+//    responses_.push_back(Dict{{"map"s, Node(map_as_string)},
+//                              {"request_id"s, Node(request.at("id"s))}});
+
+    responses_.push_back(Builder{}
+                                 .StartDict()
+                                 .Key("map"s).Value(Node(map_as_string).GetValue())
+                                 .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                                 .EndDict().Build());
 
 }

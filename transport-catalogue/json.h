@@ -19,11 +19,11 @@ public:
     using runtime_error::runtime_error;
 };
 
-using Value = std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string>;
-
-class Node final : private Value {
-public:
-    using variant::variant;
+    class Node final
+            : private std::variant<std::nullptr_t, Array, Dict, bool, int, double, std::string> {
+    public:
+        using variant::variant;
+        using Value = variant;
     
     Node() = default;
     
@@ -34,16 +34,17 @@ public:
     bool IsString() const;
     bool IsNull() const;
     bool IsArray() const;
-    bool IsMap() const;
+    bool IsDict() const;
     
     int AsInt() const;
     bool AsBool() const;
     double AsDouble() const;
     const std::string& AsString() const;
     const Array& AsArray() const;
-    const Dict& AsMap() const;
+    const Dict& AsDict() const;
     
     const Value& GetValue() const { return *this; }
+    Value& SetValue() { return *this; }
 
 };
 

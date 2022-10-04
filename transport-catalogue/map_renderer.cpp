@@ -198,7 +198,7 @@ void MapRenderer::ReadSettings(JsonReader* ptr) {
 
     const auto& doc = ptr->GetJSONDocument();
 
-    const auto& render_settings_ = doc.GetRoot().AsMap().at("render_settings"s).AsMap();
+    const auto& render_settings_ = doc.GetRoot().AsDict().at("render_settings"s).AsDict();
 
     settings_.width = render_settings_.at("width"s).AsDouble();
     settings_.height = render_settings_.at("height"s).AsDouble();

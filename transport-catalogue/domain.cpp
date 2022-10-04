@@ -9,7 +9,7 @@ double RouteAdditionalParameters::CalculateGeoRouteLength() {
         return 0;
     }
 
-    for (auto i = 0 ; i < route_ptr->stops.size() - 1 ; ++i) {
+    for (int i = 0 ; i < static_cast<int>(route_ptr->stops.size() - 1) ; ++i) {
         geo_route_length += ComputeDistance(route_ptr->stops[i]->map_point, route_ptr->stops[i + 1]->map_point);
     }
 
