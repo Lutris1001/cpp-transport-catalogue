@@ -21,8 +21,16 @@ std::istream& JsonReader::ReadJSON(std::istream& input) {
     all_objects_ = Load(input);
     return input;
 }
+
+void JsonReader::SetRoutingSettings(const json::Dict& routing_settings) const {
+    catalogue_ptr_->SetBusWaitTime(routing_settings.at("bus_wait_time"s).AsInt());
+    catalogue_ptr_->SetBusVelocity(routing_settings.at("bus_velocity"s).AsDouble());
+}
     
 void JsonReader::FillCatalogue() {
+
+    const auto& routing_settings = all_objects_.GetRoot().AsDict().at("routing_settings"s).AsDict();
+    SetRoutingSettings(routing_settings);
 
     AddAllStops();
     AddAllDistances();
@@ -43,6 +51,10 @@ void JsonReader::ProcessRequests() {
         
         if (request.at("type"s).AsString() == "Bus"s) {
             ProcessRouteRequest(request);
+        }
+
+        if (request.at("type"s).AsString() == "Route"s) {
+            ProcessOptimalPathRequest(request);
         }
 
         if (request.at("type"s).AsString() == "Map"s) {
@@ -164,7 +176,7 @@ void JsonReader::ProcessStopRequest(const Dict& request) {
             routes.push_back(Node(static_cast<std::string>(i)));
         }
 
-        responses_.push_back(Builder{}
+        responses_.emplace_back(Builder{}
                             .StartDict()
                             .Key("buses"s).Value(routes)
                             .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
@@ -173,13 +185,13 @@ void JsonReader::ProcessStopRequest(const Dict& request) {
         return;
     }
 
-     static const auto stop_not_found= Builder{}
+     auto stop_not_found= Builder{}
                     .StartDict()
                     .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
                     .Key("error_message"s).Value(Node("not found"s).GetValue())
                     .EndDict().Build();
 
-    responses_.push_back(stop_not_found);
+    responses_.emplace_back(stop_not_found);
 }
 
 void JsonReader::ProcessRouteRequest(const Dict& request) {
@@ -188,7 +200,7 @@ void JsonReader::ProcessRouteRequest(const Dict& request) {
 
     if (response.is_found) {
 
-        responses_.push_back(Builder{}
+        responses_.emplace_back(Builder{}
                         .StartDict()
                         .Key("curvature"s).Value(Node(response.true_route_length/response.geo_route_length).GetValue())
                         .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
@@ -200,13 +212,62 @@ void JsonReader::ProcessRouteRequest(const Dict& request) {
         return;
     }
 
-    static const auto route_not_found = Builder{}
+    auto route_not_found = Builder{}
                     .StartDict()
                     .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
                     .Key("error_message"s).Value(Node("not found"s).GetValue())
                     .EndDict().Build();
 
-    responses_.push_back(route_not_found);
+    responses_.emplace_back(route_not_found);
+
+}
+
+void JsonReader::ProcessOptimalPathRequest(const json::Dict& request) {
+
+    auto response =
+            catalogue_ptr_->SearchOptimalPath(request.at("from"s).AsString(),
+                                              request.at("to"s).AsString());
+
+    if (response.is_found) {
+
+        Array items;
+
+        for (const auto& i : response.items) {
+            if (i.type == "Wait") {
+                Node wait_item = Builder{}.StartDict()
+                    .Key("type"s).Value(std::string(i.type))
+                    .Key("stop_name"s).Value(std::string(i.name))
+                    .Key("time"s).Value(i.time)
+                    .EndDict().Build();
+                items.emplace_back(wait_item);
+            } else {
+                Node ride_item = Builder{}.StartDict()
+                        .Key("type"s).Value(std::string(i.type))
+                        .Key("bus"s).Value(std::string(i.name))
+                        .Key("span_count"s).Value(i.span_count)
+                        .Key("time"s).Value(i.time)
+                        .EndDict().Build();
+                items.emplace_back(ride_item);
+            }
+        }
+
+        responses_.emplace_back(Builder{}
+                                     .StartDict()
+                                     .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                                     .Key("total_time"s).Value(response.total_time)
+                                     .Key("items"s).Value(items)
+                                     .EndDict().Build());
+
+        return;
+    }
+
+    auto path_not_found = Builder{}
+            .StartDict()
+            .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+            .Key("error_message"s).Value(Node("not found"s).GetValue())
+            .EndDict().Build();
+
+    responses_.emplace_back(path_not_found);
 
 }
 
@@ -224,7 +285,7 @@ void JsonReader::ProcessMapRequest(const Dict& request) {
 
     std::string map_as_string = output.str();
 
-    responses_.push_back(Builder{}
+    responses_.emplace_back(Builder{}
                                  .StartDict()
                                  .Key("map"s).Value(Node(map_as_string).GetValue())
                                  .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())

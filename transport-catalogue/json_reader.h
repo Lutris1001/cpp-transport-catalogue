@@ -44,6 +44,8 @@ private:
     void ProcessRouteRequest(const json::Dict& request);
     void ProcessMapRequest(const json::Dict& request);
 
+    void ProcessOptimalPathRequest(const json::Dict& request);
+    void SetRoutingSettings(const json::Dict& routing_settings) const;
 };
 
 

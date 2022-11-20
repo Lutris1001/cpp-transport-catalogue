@@ -9,9 +9,11 @@
 #include <unordered_set>
 #include <optional>
 
-//#include "input_reader.h"
 #include "geo.h"
 #include "domain.h"
+
+#include "graph.h"
+#include "router.h"
 
 namespace transport_catalogue {
 
@@ -37,22 +39,40 @@ struct RouteSearchResponse {
 
 };
 
+struct OptimalPathItem {
+    std::string_view type;
+    std::string_view name;
+    int span_count = 0;
+    double time = 0.0;
+};
+
+struct OptimalPathSearchResponse {
+    std::vector<OptimalPathItem> items;
+    double total_time;
+    bool is_found;
+
+};
+
+struct PathInfo {
+    const Route* route_ptr;
+    const Stop* from;
+    int span;
+};
+
 class TransportCatalogue {
+
+    using StopPtrPair = std::pair<Stop*, Stop*>;
 
 struct StopPtrHash {
     size_t operator()(const std::pair<Stop*, Stop*>& p) const {
         auto hash1 = std::hash<const void *>{}(p.first);
         auto hash2 = std::hash<const void *>{}(p.second);
-
         if (hash1 != hash2) {
             return hash1 ^ hash2;
         }
-
         return hash1;
     }
 };
-
-    using StopPtrPair = std::pair<Stop*, Stop*>;
 
 class StopPtrPairEqualKey { // EqualTo class for all_distances_
 public:
@@ -70,7 +90,7 @@ public:
 
     void AddDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance);
 
-    int GetDistance(const std::string& stop_name_from, const std::string& stop_name_to);
+    int GetDistance(const std::string& stop_name_from, const std::string& stop_name_to) const;
 
     std::map<std::string, const Route*> GetAllRoutesPtr() const;
 
@@ -83,6 +103,17 @@ public:
     [[nodiscard]] const StopSearchResponse SearchStop(const std::string& stop_name) const;
 
     [[nodiscard]] const RouteSearchResponse SearchRoute(const std::string& route_name);
+
+    void SetBusWaitTime(int time);
+    void SetBusVelocity(double velocity);
+
+    [[nodiscard]] const OptimalPathSearchResponse SearchOptimalPath(const std::string& from, const std::string& to) const;
+
+    void FillGraph(graph::DirectedWeightedGraph<double>* graph_ptr);
+
+    size_t GetStopsCount();
+
+    void SetRouter(graph::Router<double>* router_ptr);
 
 private:
 
@@ -98,6 +129,56 @@ private:
 
     std::deque<RouteAdditionalParameters> all_route_parameters_;
     std::unordered_map<std::string_view, RouteAdditionalParameters*> route_name_to_additional_parameters_;
+
+    graph::DirectedWeightedGraph<double>* graph_ = nullptr;
+    graph::Router<double>* graph_router_ = nullptr;
+
+    std::unordered_map<graph::EdgeId, PathInfo> edge_id_to_path_info_;
+
+    double bus_wait_time_ = 0.0;
+    double bus_velocity_ = 0.0;
+
+    void AddRoundRouteEdge(const Route& route);
+
+    void AddNonRoundRouteEdge(const Route& route);
+
+    template <typename It>
+    double CalculateRealDistance(It from, It to) const {
+        double result = 0.0;
+
+        if (std::distance(from, to) > 0) {
+            for (auto i = from; i != to; ++i) {
+                result += std::abs(GetDistance((*i)->name, (*(i + 1))->name));
+            }
+        } else {
+            for (auto i = from; i != to; --i) {
+                result += std::abs(GetDistance((*i)->name, (*(i - 1))->name));
+            }
+        }
+
+        return result;
+    }
+
+    template <typename It>
+    void AddOneRouteEdge(const Route& route, It from, It to) {
+
+        double real_dist = CalculateRealDistance(from, to);
+
+        double time = (real_dist * 3) / (50 * bus_velocity_)  + bus_wait_time_;
+
+        int span = std::abs(std::distance(from, to));
+
+        auto edge_id = graph_->AddEdge({
+                                               graph::VertexId((*from)->id),
+                                               graph::VertexId((*to)->id),
+                                               time
+                                       });
+
+        edge_id_to_path_info_[edge_id] = PathInfo{&route,
+                                                  &(*(*from)),
+                                                  span
+        };
+    }
 
 };
 

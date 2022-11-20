@@ -9,9 +9,10 @@ namespace domain {
 
 struct Stop {
 
-    Stop(const std::string& name, Coordinates geo_map_point)
-        : name(name), map_point(geo_map_point)
+    explicit Stop(const std::string& name, Coordinates geo_map_point, int stop_id)
+        : name(name), map_point(geo_map_point), id(stop_id)
     {
+        assert(id >= 0);
         assert(double(-90.0) <= geo_map_point.lat && geo_map_point.lat <= double(90.0));
         assert(double(-180.0) <= geo_map_point.lng && geo_map_point.lng <= double(180.0));
     }
@@ -20,20 +21,22 @@ struct Stop {
 
     std::string name;
     Coordinates map_point;
+    int id;
 };
 
 struct Route {
 
-    Route(const std::string& name)
-        : name(name)
+    explicit Route(const std::string& name, int route_id)
+        : name(name), id(route_id)
     {
+        assert(route_id >= 0);
         assert(!name.empty());
     }
 
     std::vector<Stop*> stops;
     std::string name;
     bool is_roundtrip;
-
+    int id;
 };
 
 struct RouteAdditionalParameters {

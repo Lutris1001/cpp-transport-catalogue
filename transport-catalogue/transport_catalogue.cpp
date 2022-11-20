@@ -2,20 +2,25 @@
 #include <string_view>
 #include <algorithm>
 #include <tuple>
+#include <vector>
+#include <iterator>
 
 #include "transport_catalogue.h"
 #include "geo.h"
 #include "domain.h"
+#include "graph.h"
+#include "router.h"
 
 namespace transport_catalogue {
 
 using namespace domain;
+using namespace std::literals;
 
 void TransportCatalogue::AddStop(const std::string& name, Coordinates map_point) {
 
     assert(!name.empty()); // check name not empty
 
-    Stop stop(name, map_point);
+    Stop stop(name, map_point, static_cast<int>(all_stops_.size()));
 
     all_stops_.push_back(std::move(stop));
     Stop* stop_ptr = &(all_stops_.back());
@@ -23,7 +28,6 @@ void TransportCatalogue::AddStop(const std::string& name, Coordinates map_point)
     stop_name_to_stop_[std::string_view(stop_ptr->name)] = stop_ptr;
 
     stop_name_to_route_set_[stop_ptr];
-
 }
 
 void TransportCatalogue::AddDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance) {
@@ -43,7 +47,7 @@ void TransportCatalogue::AddRoute(const std::string &name, const std::vector <st
 
     assert(!name.empty()); // check number of args
 
-    Route route(name);
+    Route route(name, static_cast<int>(all_routes_.size()));
 
     route.is_roundtrip = is_round;
 
@@ -90,7 +94,6 @@ const transport_catalogue::StopSearchResponse TransportCatalogue::SearchStop(con
 
 }
 
-
 const transport_catalogue::RouteSearchResponse TransportCatalogue::SearchRoute(const std::string& route_name) {
 
     if (route_name_to_route_.count(std::string_view(route_name)) != 0) {
@@ -124,7 +127,61 @@ const transport_catalogue::RouteSearchResponse TransportCatalogue::SearchRoute(c
     }
 }
 
-int TransportCatalogue::GetDistance(const std::string& stop_name_from, const std::string& stop_name_to) {
+const OptimalPathSearchResponse TransportCatalogue::SearchOptimalPath(const std::string& from, const std::string& to) const {
+
+    static const OptimalPathSearchResponse dummy{{},
+                                    0,
+                                    false};
+
+    if (!stop_name_to_stop_.count(from) ||
+        !stop_name_to_stop_.count(to)) {
+        return dummy;
+    }
+
+    graph::VertexId id_1 = stop_name_to_stop_.at(from)->id;
+    graph::VertexId id_2 = stop_name_to_stop_.at(to)->id;
+
+    auto path = graph_router_->BuildRoute(id_1,id_2);
+
+    if (!path.has_value()) {
+        return dummy;
+    }
+
+    const auto& edges = path.value().edges;
+
+    std::vector<OptimalPathItem> items;
+
+    double total_time = 0.0;
+
+    for (auto edge_id : edges) {
+
+        const auto& edge = graph_->GetEdge(edge_id);
+        const PathInfo& info = edge_id_to_path_info_.at(edge_id);
+
+        items.emplace_back(OptimalPathItem{
+                "Wait"sv,
+                info.from->name,
+                0,
+                bus_wait_time_
+        });
+
+        items.emplace_back(OptimalPathItem{
+                "Bus"sv,
+                info.route_ptr->name,
+                info.span,
+                edge.weight - bus_wait_time_
+        });
+
+        total_time += edge.weight;
+    }
+
+
+    return {std::move(items),
+            total_time,
+            true};
+}
+
+int TransportCatalogue::GetDistance(const std::string& stop_name_from, const std::string& stop_name_to) const {
     auto key = StopPtrPair{stop_name_to_stop_.at(std::string_view(stop_name_from)),
                            stop_name_to_stop_.at(std::string_view(stop_name_to))};
 
@@ -176,5 +233,62 @@ bool TransportCatalogue::IsStopExist(const std::string_view& name) const {
 const Route* TransportCatalogue::GetRoutePtr(const std::string_view& route_name) const {
     return const_cast<Route*>(route_name_to_route_.at(route_name));
 }
+
+void TransportCatalogue::SetBusWaitTime(int time) {
+    bus_wait_time_ = time;
+}
+
+void TransportCatalogue::SetBusVelocity(double velocity) {
+    bus_velocity_ = velocity;
+}
+
+void TransportCatalogue::FillGraph(graph::DirectedWeightedGraph<double>* graph_ptr) {
+
+    graph_ = graph_ptr;
+
+    for (const auto& route : all_routes_) {
+        route.is_roundtrip ? AddRoundRouteEdge(route) :
+                AddNonRoundRouteEdge(route);
+    }
+
+}
+
+void TransportCatalogue::AddRoundRouteEdge(const Route& route) {
+
+    for (auto from_it = route.stops.begin(); from_it != route.stops.end(); ++from_it) {
+
+        for (auto to_it = from_it + 1; to_it != route.stops.end(); ++to_it) {
+
+            AddOneRouteEdge(route, from_it, to_it);
+        }
+    }
+}
+
+void TransportCatalogue::AddNonRoundRouteEdge(const Route& route) {
+
+    auto middle_it = route.stops.begin() + (route.stops.size() / 2) == route.stops.end() ? route.stops.end() :
+            route.stops.begin() + (route.stops.size() / 2) + 1 ;
+
+
+    for (auto from_it = route.stops.begin(); from_it != middle_it; ++from_it) {
+        for (auto to_it = route.stops.begin(); to_it != middle_it; ++to_it) {
+            AddOneRouteEdge(route, from_it, to_it);
+        }
+    }
+
+    for (auto from_it= middle_it - 1; from_it != route.stops.end(); ++from_it) {
+        for (auto to_it = middle_it; to_it != route.stops.end(); ++to_it) {
+            AddOneRouteEdge(route, from_it, to_it);
+        }
+    }
+}
+
+    size_t TransportCatalogue::GetStopsCount() {
+        return all_stops_.size();
+    }
+
+    void TransportCatalogue::SetRouter(graph::Router<double>* router_ptr) {
+        graph_router_ = router_ptr;
+    }
 
 } // end of namespace: transport_catalogue
