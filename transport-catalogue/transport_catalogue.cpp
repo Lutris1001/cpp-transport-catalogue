@@ -6,10 +6,9 @@
 #include <iterator>
 
 #include "transport_catalogue.h"
+#include "transport_router.h"
 #include "geo.h"
 #include "domain.h"
-#include "graph.h"
-#include "router.h"
 
 namespace transport_catalogue {
 
@@ -127,7 +126,7 @@ const transport_catalogue::RouteSearchResponse TransportCatalogue::SearchRoute(c
     }
 }
 
-const OptimalPathSearchResponse TransportCatalogue::SearchOptimalPath(const std::string& from, const std::string& to) const {
+const OptimalPathSearchResponse TransportCatalogue::SearchOptimalPath(const std::string& from, const std::string& to) {
 
     static const OptimalPathSearchResponse dummy{{},
                                     0,
@@ -141,7 +140,7 @@ const OptimalPathSearchResponse TransportCatalogue::SearchOptimalPath(const std:
     graph::VertexId id_1 = stop_name_to_stop_.at(from)->id;
     graph::VertexId id_2 = stop_name_to_stop_.at(to)->id;
 
-    auto path = graph_router_->BuildRoute(id_1,id_2);
+    auto path = router_.value().BuildRoute(id_1,id_2);
 
     if (!path.has_value()) {
         return dummy;
@@ -155,8 +154,8 @@ const OptimalPathSearchResponse TransportCatalogue::SearchOptimalPath(const std:
 
     for (auto edge_id : edges) {
 
-        const auto& edge = graph_->GetEdge(edge_id);
-        const PathInfo& info = edge_id_to_path_info_.at(edge_id);
+        const auto& edge = router_.value().GetEdge(edge_id);
+        const PathInfo& info = router_.value().GetInfo(edge_id);
 
         items.emplace_back(OptimalPathItem{
                 "Wait"sv,
@@ -175,7 +174,6 @@ const OptimalPathSearchResponse TransportCatalogue::SearchOptimalPath(const std:
         total_time += edge.weight;
     }
 
-
     return {std::move(items),
             total_time,
             true};
@@ -193,7 +191,6 @@ int TransportCatalogue::GetDistance(const std::string& stop_name_from, const std
 
         return all_distances_.at(reversed_key);
     }
-
 }
 
 int TransportCatalogue::CalculateTrueRouteLength(const std::string& name) {
@@ -242,9 +239,11 @@ void TransportCatalogue::SetBusVelocity(double velocity) {
     bus_velocity_ = velocity;
 }
 
-void TransportCatalogue::FillGraph(graph::DirectedWeightedGraph<double>* graph_ptr) {
+void TransportCatalogue::FillGraph() {
 
-    graph_ = graph_ptr;
+    if (!router_.has_value()) {
+        router_ = TransportRouter(all_stops_.size());
+    }
 
     for (const auto& route : all_routes_) {
         route.is_roundtrip ? AddRoundRouteEdge(route) :
@@ -283,12 +282,8 @@ void TransportCatalogue::AddNonRoundRouteEdge(const Route& route) {
     }
 }
 
-    size_t TransportCatalogue::GetStopsCount() {
-        return all_stops_.size();
-    }
-
-    void TransportCatalogue::SetRouter(graph::Router<double>* router_ptr) {
-        graph_router_ = router_ptr;
-    }
+bool TransportCatalogue::RouterExist() const {
+    return router_.has_value();
+}
 
 } // end of namespace: transport_catalogue

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "transport_catalogue.h"
+#include <memory>
+
 #include "graph.h"
 #include "router.h"
 #include "ranges.h"
@@ -12,38 +13,51 @@ namespace transport_catalogue {
     using namespace domain;
     using namespace graph;
 
-    template <typename Weight>
+    struct PathInfo {
+        const Route* route_ptr;
+        const Stop* from;
+        int span;
+    };
+
 class TransportRouter {
 public:
 
     explicit TransportRouter(size_t vertex_count)
-        : graph_(vertex_count), router_(graph_)
+        : graph_(vertex_count)
     {
     }
 
-    auto AddEdge(const Edge<double>& edge) {
-        return graph_.AddEdge(edge);
+    auto AddEdge(int from, int to, double time) {
+        return graph_.AddEdge({VertexId(from), VertexId(to), time});
     }
 
-    auto GetEdge(EdgeId edge_id) const {
-        return graph_.GetEdge(edge_id);
+    auto GetEdge(int edge_id) {
+        return graph_.GetEdge(EdgeId(edge_id));
     }
 
-    auto BuildRoute(VertexId from, VertexId to) const {
-        return router_.BuildRoute(from, to);
+    const PathInfo& GetInfo(int edge_id) const {
+        return edge_id_to_path_info_.at(edge_id);
     }
 
-    size_t GetVertexCount() const {
-        return graph_.GetVertexCount();
+    auto BuildRoute(int from, int to) {
+        if (router_ == nullptr) {
+            router_ = std::make_unique<Router<double>>(Router<double>{graph_});
+        }
+
+        return router_->BuildRoute(VertexId(from), VertexId(to));
     }
 
-    size_t GetEdgeCount() const {
-        return graph_.GetEdgeCount();
+    void AddInfo(int edge_id, PathInfo info) {
+        edge_id_to_path_info_[EdgeId(edge_id)] = std::move(info);
     }
 
 private:
-    graph::DirectedWeightedGraph<Weight> graph_;
-    graph::Router<Weight> router_;
+    graph::DirectedWeightedGraph<double> graph_;
+    std::unique_ptr<graph::Router<double>> router_ = nullptr;
+
+    std::unordered_map<graph::EdgeId, PathInfo> edge_id_to_path_info_;
+
+
 };
 
 } // end of namespace: transport_catalogue

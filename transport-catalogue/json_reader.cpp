@@ -29,9 +29,6 @@ void JsonReader::SetRoutingSettings(const json::Dict& routing_settings) const {
     
 void JsonReader::FillCatalogue() {
 
-    const auto& routing_settings = all_objects_.GetRoot().AsDict().at("routing_settings"s).AsDict();
-    SetRoutingSettings(routing_settings);
-
     AddAllStops();
     AddAllDistances();
     AddAllRoutes();
@@ -54,6 +51,13 @@ void JsonReader::ProcessRequests() {
         }
 
         if (request.at("type"s).AsString() == "Route"s) {
+            // Lasy Initialization
+            if (!catalogue_ptr_->RouterExist()) {
+                const auto& routing_settings = all_objects_.GetRoot().AsDict().at("routing_settings"s).AsDict();
+                SetRoutingSettings(routing_settings);
+                catalogue_ptr_->FillGraph();
+            }
+
             ProcessOptimalPathRequest(request);
         }
 

@@ -12,8 +12,7 @@
 #include "geo.h"
 #include "domain.h"
 
-#include "graph.h"
-#include "router.h"
+#include "transport_router.h"
 
 namespace transport_catalogue {
 
@@ -21,22 +20,18 @@ using namespace geo;
 using namespace domain;
 
 struct StopSearchResponse {
-
     std::string_view name;
     std::vector<std::string_view> route_names_at_stop;
     bool is_found;
-
 };
 
 struct RouteSearchResponse {
-
     std::string_view name;
     double geo_route_length;
     int true_route_length;
     std::size_t unique_stops;
     std::size_t route_size;
     bool is_found;
-
 };
 
 struct OptimalPathItem {
@@ -50,13 +45,6 @@ struct OptimalPathSearchResponse {
     std::vector<OptimalPathItem> items;
     double total_time;
     bool is_found;
-
-};
-
-struct PathInfo {
-    const Route* route_ptr;
-    const Stop* from;
-    int span;
 };
 
 class TransportCatalogue {
@@ -107,13 +95,10 @@ public:
     void SetBusWaitTime(int time);
     void SetBusVelocity(double velocity);
 
-    [[nodiscard]] const OptimalPathSearchResponse SearchOptimalPath(const std::string& from, const std::string& to) const;
+    [[nodiscard]] const OptimalPathSearchResponse SearchOptimalPath(const std::string& from, const std::string& to);
 
-    void FillGraph(graph::DirectedWeightedGraph<double>* graph_ptr);
-
-    size_t GetStopsCount();
-
-    void SetRouter(graph::Router<double>* router_ptr);
+    bool RouterExist() const;
+    void FillGraph();
 
 private:
 
@@ -130,10 +115,7 @@ private:
     std::deque<RouteAdditionalParameters> all_route_parameters_;
     std::unordered_map<std::string_view, RouteAdditionalParameters*> route_name_to_additional_parameters_;
 
-    graph::DirectedWeightedGraph<double>* graph_ = nullptr;
-    graph::Router<double>* graph_router_ = nullptr;
-
-    std::unordered_map<graph::EdgeId, PathInfo> edge_id_to_path_info_;
+    std::optional<TransportRouter> router_;
 
     double bus_wait_time_ = 0.0;
     double bus_velocity_ = 0.0;
@@ -168,16 +150,16 @@ private:
 
         int span = std::abs(std::distance(from, to));
 
-        auto edge_id = graph_->AddEdge({
-                                               graph::VertexId((*from)->id),
-                                               graph::VertexId((*to)->id),
-                                               time
-                                       });
+        auto edge_id = router_.value().AddEdge((*from)->id,
+                                                        (*to)->id,
+                                                        time
+                                                        );
 
-        edge_id_to_path_info_[edge_id] = PathInfo{&route,
-                                                  &(*(*from)),
-                                                  span
-        };
+        router_.value().AddInfo(edge_id, PathInfo{&route,
+                                          &(*(*from)),
+                                          span}
+                                          );
+
     }
 
 };

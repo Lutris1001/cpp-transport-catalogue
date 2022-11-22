@@ -16,12 +16,6 @@ int main() {
 
     reader.FillCatalogue();
 
-    graph::DirectedWeightedGraph<double> route_graph(catalogue.GetStopsCount());
-    catalogue.FillGraph(&route_graph);
-
-    graph::Router<double> router{route_graph};
-    catalogue.SetRouter(&router);
-
     reader.ProcessRequests();
 
     reader.PrintResponses(std::cout);
