@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <deque>
 
 #include "graph.h"
 #include "router.h"
@@ -19,19 +20,25 @@ namespace transport_catalogue {
         int span;
     };
 
+    struct RouterSettings {
+        double bus_wait_time_ = 0.0;
+        double bus_velocity_ = 0.0;
+    };
+
 class TransportRouter {
 public:
 
-    explicit TransportRouter(size_t vertex_count)
-        : graph_(vertex_count)
+    using DistanceMap = std::unordered_map<StopPtrPair, int, StopPtrHash, StopPtrPairEqualKey>;
+
+    explicit TransportRouter(RouterSettings settings, const DistanceMap& distances, const std::deque<Route>& routes, size_t vertex_count)
+        : settings_(std::move(settings)), distances_(distances), routes_(routes), graph_(vertex_count)
     {
+        AutoFillGraph(vertex_count);
     }
 
-    auto AddEdge(int from, int to, double time) {
-        return graph_.AddEdge({VertexId(from), VertexId(to), time});
-    }
+    std::optional<Router<double>::RouteInfo> BuildRoute(int from, int to);
 
-    auto GetEdge(int edge_id) {
+    Edge<double> GetEdge(int edge_id) const {
         return graph_.GetEdge(EdgeId(edge_id));
     }
 
@@ -39,25 +46,76 @@ public:
         return edge_id_to_path_info_.at(edge_id);
     }
 
-    auto BuildRoute(int from, int to) {
-        if (router_ == nullptr) {
-            router_ = std::make_unique<Router<double>>(Router<double>{graph_});
-        }
-
-        return router_->BuildRoute(VertexId(from), VertexId(to));
+    double GetBusWaitTme() const {
+        return settings_.bus_wait_time_;
     }
+
+private:
+    RouterSettings settings_;
+    const DistanceMap& distances_;
+    const std::deque<Route>& routes_;
+    graph::DirectedWeightedGraph<double> graph_;
+
+    std::unique_ptr<graph::Router<double>> router_ = nullptr;
+
+    std::unordered_map<graph::EdgeId, PathInfo> edge_id_to_path_info_;
+
+    void AutoFillGraph(size_t vertex_count);
+
+    void AddRoundEdge(const Route& route);
+
+    void AddNonRoundEdge(const Route& route);
+
+    auto AddEdge(int from, int to, double time) {
+        return graph_.AddEdge({VertexId(from), VertexId(to), time});
+    }
+
+    double GetDistance(Stop* stop_ptr_from, Stop* stop_ptr_to) const;
 
     void AddInfo(int edge_id, PathInfo info) {
         edge_id_to_path_info_[EdgeId(edge_id)] = std::move(info);
     }
 
-private:
-    graph::DirectedWeightedGraph<double> graph_;
-    std::unique_ptr<graph::Router<double>> router_ = nullptr;
+    template <typename It>
+    double CalculateRealDistance(It from, It to) const {
+        double result = 0.0;
 
-    std::unordered_map<graph::EdgeId, PathInfo> edge_id_to_path_info_;
+        if (std::distance(from, to) > 0) {
+            for (auto i = from; i != to; ++i) {
+                result += std::abs(GetDistance(*i, *(i + 1)));
+            }
+        } else {
+            for (auto i = from; i != to; --i) {
+                result += std::abs(GetDistance(*i, *(i - 1)));
+            }
+        }
 
+        return result;
+    }
 
+    template <typename It>
+    void CalcAndAddEdge(const Route& route, It from, It to) {
+
+        double real_dist = CalculateRealDistance(from, to);
+
+        // ((meters * 1000) / (velocity km/h)) * 60 minutes_in_hour) + wait_time_in_minutes ==>
+        // Coefficient from km/h to meters/minute = 0.06;
+        static const double MULTIPLY_COEF = 0.06;
+
+        double time = MULTIPLY_COEF * (real_dist / settings_.bus_velocity_) + settings_.bus_wait_time_;
+
+        int span = std::abs(std::distance(from, to));
+
+        auto edge_id = AddEdge((*from)->id,
+                               (*to)->id,
+                               time
+        );
+
+        AddInfo(edge_id, PathInfo{&route,
+                                  *from,
+                                  span}
+        );
+    }
 };
 
 } // end of namespace: transport_catalogue

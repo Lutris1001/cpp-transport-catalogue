@@ -1,6 +1,5 @@
 #include "json_reader.h"
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include "json.h"
@@ -20,11 +19,6 @@ JsonReader::JsonReader(TransportCatalogue* ptr)
 std::istream& JsonReader::ReadJSON(std::istream& input) {
     all_objects_ = Load(input);
     return input;
-}
-
-void JsonReader::SetRoutingSettings(const json::Dict& routing_settings) const {
-    catalogue_ptr_->SetBusWaitTime(routing_settings.at("bus_wait_time"s).AsInt());
-    catalogue_ptr_->SetBusVelocity(routing_settings.at("bus_velocity"s).AsDouble());
 }
     
 void JsonReader::FillCatalogue() {
@@ -51,11 +45,12 @@ void JsonReader::ProcessRequests() {
         }
 
         if (request.at("type"s).AsString() == "Route"s) {
-            // Lasy Initialization
+            // Lasy Initialization. Heavy graph will be created only if this request type is called.
             if (!catalogue_ptr_->RouterExist()) {
                 const auto& routing_settings = all_objects_.GetRoot().AsDict().at("routing_settings"s).AsDict();
-                SetRoutingSettings(routing_settings);
-                catalogue_ptr_->FillGraph();
+
+                catalogue_ptr_->CreateRouter(RouterSettings{routing_settings.at("bus_wait_time"s).AsDouble(),
+                                                            routing_settings.at("bus_velocity"s).AsDouble()});
             }
 
             ProcessOptimalPathRequest(request);
@@ -102,7 +97,7 @@ void JsonReader::AddOneDistance(const Dict& request) {
     const auto& distances = request.at("road_distances"s).AsDict();
     for (const auto& name_to_distance : distances) {
 
-        catalogue_ptr_->AddDistance(request.at("name"s).AsString(),
+        catalogue_ptr_->SetDistance(request.at("name"s).AsString(),
                                     name_to_distance.first,
                                     name_to_distance.second.AsInt());
 

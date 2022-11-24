@@ -24,6 +24,27 @@ struct Stop {
     int id;
 };
 
+using StopPtrPair = std::pair<Stop*, Stop*>;
+
+struct StopPtrHash {
+    size_t operator()(const std::pair<Stop*, Stop*>& p) const {
+        auto hash1 = std::hash<const void *>{}(p.first);
+        auto hash2 = std::hash<const void *>{}(p.second);
+        if (hash1 != hash2) {
+            return hash1 ^ hash2;
+        }
+        return hash1;
+    }
+};
+
+class StopPtrPairEqualKey { // EqualTo class for all_distances_
+public:
+    constexpr bool operator()(const StopPtrPair &lhs, const StopPtrPair &rhs) const
+    {
+        return *(lhs.first) == *(rhs.first) && *(lhs.second) == *(rhs.second);
+    }
+};
+
 struct Route {
 
     explicit Route(const std::string& name, int route_id)

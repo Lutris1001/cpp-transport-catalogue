@@ -193,7 +193,7 @@ void InputParser::ProcessRequests(const std::vector<Request>& requests) {
     for (auto i : requests) {
         if (i.req_type == InputParser::RequestType::ADD_STOP) {
             for (int j = 3; j < i.req_body.size() - 1; j += 2) {
-                catalogue_ptr_->AddDistance(i.req_body[0],
+                catalogue_ptr_->SetDistance(i.req_body[0],
                                             i.req_body[j + 1],
                                             std::stoi(i.req_body[j]));
             }

@@ -8,6 +8,7 @@
 #include <map>
 #include <unordered_set>
 #include <optional>
+#include <memory>
 
 #include "geo.h"
 #include "domain.h"
@@ -49,34 +50,13 @@ struct OptimalPathSearchResponse {
 
 class TransportCatalogue {
 
-    using StopPtrPair = std::pair<Stop*, Stop*>;
-
-struct StopPtrHash {
-    size_t operator()(const std::pair<Stop*, Stop*>& p) const {
-        auto hash1 = std::hash<const void *>{}(p.first);
-        auto hash2 = std::hash<const void *>{}(p.second);
-        if (hash1 != hash2) {
-            return hash1 ^ hash2;
-        }
-        return hash1;
-    }
-};
-
-class StopPtrPairEqualKey { // EqualTo class for all_distances_
-public:
-    constexpr bool operator()(const StopPtrPair &lhs, const StopPtrPair &rhs) const
-    {
-        return lhs.first == rhs.first && lhs.second == rhs.second;
-    }
-};
-
 public:
 
     void AddStop(const std::string& name, Coordinates map_point);
 
     void AddRoute(const std::string& name, const std::vector<std::string>& stops, bool is_round);
 
-    void AddDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance);
+    void SetDistance(const std::string& stop_name_from, const std::string& stop_name_to, int distance);
 
     int GetDistance(const std::string& stop_name_from, const std::string& stop_name_to) const;
 
@@ -92,13 +72,10 @@ public:
 
     [[nodiscard]] const RouteSearchResponse SearchRoute(const std::string& route_name);
 
-    void SetBusWaitTime(int time);
-    void SetBusVelocity(double velocity);
-
     [[nodiscard]] const OptimalPathSearchResponse SearchOptimalPath(const std::string& from, const std::string& to);
 
     bool RouterExist() const;
-    void FillGraph();
+    void CreateRouter(RouterSettings settings);
 
 private:
 
@@ -115,52 +92,7 @@ private:
     std::deque<RouteAdditionalParameters> all_route_parameters_;
     std::unordered_map<std::string_view, RouteAdditionalParameters*> route_name_to_additional_parameters_;
 
-    std::optional<TransportRouter> router_;
-
-    double bus_wait_time_ = 0.0;
-    double bus_velocity_ = 0.0;
-
-    void AddRoundRouteEdge(const Route& route);
-
-    void AddNonRoundRouteEdge(const Route& route);
-
-    template <typename It>
-    double CalculateRealDistance(It from, It to) const {
-        double result = 0.0;
-
-        if (std::distance(from, to) > 0) {
-            for (auto i = from; i != to; ++i) {
-                result += std::abs(GetDistance((*i)->name, (*(i + 1))->name));
-            }
-        } else {
-            for (auto i = from; i != to; --i) {
-                result += std::abs(GetDistance((*i)->name, (*(i - 1))->name));
-            }
-        }
-
-        return result;
-    }
-
-    template <typename It>
-    void AddOneRouteEdge(const Route& route, It from, It to) {
-
-        double real_dist = CalculateRealDistance(from, to);
-
-        double time = (real_dist * 3) / (50 * bus_velocity_)  + bus_wait_time_;
-
-        int span = std::abs(std::distance(from, to));
-
-        auto edge_id = router_.value().AddEdge((*from)->id,
-                                                        (*to)->id,
-                                                        time
-                                                        );
-
-        router_.value().AddInfo(edge_id, PathInfo{&route,
-                                          &(*(*from)),
-                                          span}
-                                          );
-
-    }
+    std::unique_ptr<TransportRouter> router_ = nullptr;
 
 };
 
