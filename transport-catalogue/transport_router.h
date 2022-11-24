@@ -98,7 +98,7 @@ private:
 
         double real_dist = CalculateRealDistance(from, to);
 
-        // ((meters * 1000) / (velocity km/h)) * 60 minutes_in_hour) + wait_time_in_minutes ==>
+        // ((meters / 1000) / (velocity km/h)) * 60 minutes_in_hour) + wait_time_in_minutes ==>
         // Coefficient from km/h to meters/minute = 0.06;
         static const double MULTIPLY_COEF = 0.06;
 
