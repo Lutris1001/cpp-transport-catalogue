@@ -1,23 +1,35 @@
+
 #include <iostream>
+#include <string_view>
 
-#include "json_reader.h"
-#include "transport_catalogue.h"
-#include "graph.h"
-#include "router.h"
+#include "serialization.h"
 
+using namespace std::literals;
 
-int main() {
+void PrintUsage(std::ostream& stream = std::cerr) {
+    stream << "Usage: transport_catalogue [make_base|process_requests]\n"sv;
+}
 
-    transport_catalogue::TransportCatalogue catalogue;
-    
-    JsonReader reader(&catalogue);
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        PrintUsage();
+        return 1;
+    }
 
-    reader.ReadJSON(std::cin);
+    const std::string_view mode(argv[1]);
 
-    reader.FillCatalogue();
+    if (mode == "make_base"sv) {
 
-    reader.ProcessRequests();
+        // make base here
+        serial_database::MakeBase(std::cin);
 
-    reader.PrintResponses(std::cout);
-    
+    } else if (mode == "process_requests"sv) {
+
+        // process requests here
+        serial_database::ProcessRequests(std::cin, std::cout);
+
+    } else {
+        PrintUsage();
+        return 1;
+    }
 }

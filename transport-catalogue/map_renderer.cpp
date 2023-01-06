@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "json.h"
-#include "json_reader.h"
 #include "svg.h"
 #include "transport_catalogue.h"
 #include "geo.h"
@@ -193,43 +192,6 @@ void MapRenderer::Fill() {
     }
 }
 
-void MapRenderer::ReadSettings(JsonReader* ptr) {
-    using namespace std::literals;
-
-    const auto& doc = ptr->GetJSONDocument();
-
-    const auto& render_settings_ = doc.GetRoot().AsDict().at("render_settings"s).AsDict();
-
-    settings_.width = render_settings_.at("width"s).AsDouble();
-    settings_.height = render_settings_.at("height"s).AsDouble();
-
-    settings_.padding = render_settings_.at("padding"s).AsDouble();
-    assert(settings_.padding < std::min(settings_.width, settings_.height)/2);
-    assert(settings_.padding > 0);
-
-    settings_.line_width = render_settings_.at("line_width"s).AsDouble();
-    settings_.stop_radius = render_settings_.at("stop_radius"s).AsDouble();
-
-    settings_.bus_label_font_size = render_settings_.at("bus_label_font_size"s).AsInt();
-
-    for (const auto &i: render_settings_.at("bus_label_offset"s).AsArray()) {
-        settings_.bus_label_offset.push_back(i.AsDouble());
-    }
-
-    settings_.stop_label_font_size = render_settings_.at("stop_label_font_size"s).AsInt();
-
-    for (const auto &i: render_settings_.at("stop_label_offset"s).AsArray()) {
-        settings_.stop_label_offset.push_back(i.AsDouble());
-    }
-
-    settings_.underlayer_color = ParseColor(render_settings_.at("underlayer_color"s));
-    settings_.underlayer_width = render_settings_.at("underlayer_width"s).AsDouble();
-
-    for (const auto &i: render_settings_.at("color_palette"s).AsArray()) {
-        settings_.color_palette.push_back(ParseColor(i));
-    }
-}
-
 std::ostream& MapRenderer::GetCompleteMap(std::ostream& output) {
 
     Fill();
@@ -246,6 +208,10 @@ std::ostream& MapRenderer::GetCompleteMap(std::ostream& output) {
 
 const svg::Document& MapRenderer::GetMapDocumentRef() const {
     return picture_;
+}
+
+void MapRenderer::SetSettings(Settings&& settings) {
+    settings_ = std::move(settings);
 }
 
 } // end namespace renderer

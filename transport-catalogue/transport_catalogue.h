@@ -66,6 +66,8 @@ public:
 
     const Route* GetRoutePtr(const std::string_view& route_name) const;
 
+    const Stop* GetStopPtr(const std::string_view& stop_name) const;
+
     int CalculateTrueRouteLength(const std::string& name);
 
     [[nodiscard]] const StopSearchResponse SearchStop(const std::string& stop_name) const;
@@ -77,10 +79,27 @@ public:
     bool RouterExist() const;
     void CreateRouter(RouterSettings settings);
 
+    const std::deque<Stop>* GetConstStopsPtr() const {
+        return &all_stops_;
+    }
+    const std::deque<Route>* GetConstRoutePtr() const {
+        return &all_routes_;
+    }
+
+    const std::unordered_map<StopPtrPair, int, StopPtrHash, StopPtrPairEqualKey>* GetConstDistancesPtr() const {
+        return &all_distances_;
+    }
+
+    std::unique_ptr<TransportRouter>& GetRouter();
+
+    void CreateRouterFromProto(RouterSettings&& settings, graph::DirectedWeightedGraph<double>&& graph,
+                               std::unordered_map<graph::EdgeId, transport_catalogue::PathInfo>&& all_info);
+
 private:
 
     std::deque<Stop> all_stops_;
     std::unordered_map<std::string_view, Stop*> stop_name_to_stop_;
+    std::unordered_map<int, Stop*> stop_id_to_stop_;
 
     std::deque<Route> all_routes_;
     std::unordered_map<std::string_view, Route*> route_name_to_route_;

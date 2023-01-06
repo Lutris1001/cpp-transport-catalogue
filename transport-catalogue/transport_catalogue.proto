@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package proto_serialize;
+
+message Color {
+  bool is_string = 1;
+  bool is_transparent = 2;
+  string string_color = 3;
+  uint32 r = 4;
+  uint32 g = 5;
+  uint32 b = 6;
+  double a = 7;
+}
+
+message RenderSetting {
+  double width = 1;
+  double height = 2;
+
+  double padding = 3;
+
+  double line_width = 4;
+  double stop_radius = 5;
+
+  uint32 bus_label_font_size = 6;
+
+  repeated double bus_label_offset = 7;
+
+  uint32 stop_label_font_size = 8;
+  repeated double stop_label_offset = 9;
+
+  Color underlayer_color_r = 10;
+  double underlayer_width = 11;
+
+  repeated Color color_palette = 12;
+}
+
+message Stop{
+  string name = 1;
+  double latitude = 2;
+  double longitude = 3;
+}
+
+message Distance {
+  string stop_name_from = 1;
+  string stop_name_to = 2;
+  uint32 distance = 3;
+}
+
+message Route{
+  string name = 1;
+  repeated string stop_name = 2;
+  bool is_roundtrip = 3;
+}
+
+message TransportCatalogue {
+  RenderSetting render_settings = 1;
+  Router router = 2;
+  repeated Stop all_stops = 3;
+  repeated Distance all_distances = 4;
+  repeated Route all_routes = 5;
+}
+
+message RoutingSetting {
+  double bus_wait_time_ = 1;
+  double bus_velocity_ = 2;
+}
+
+message IncidenceList {
+  repeated uint32 edge_id = 1;
+}
+
+message Edge {
+  uint32 vertex_id_from = 1;
+  uint32 vertex_id_to = 2;
+  double weight = 3;
+}
+
+message PathInfo {
+  uint32 edge_id = 1;
+  string route_name = 2;
+  string stop_name = 3;
+  uint32 span = 4;
+}
+
+message Router {
+  RoutingSetting routing_settings = 1;
+  repeated Edge edges = 2;
+  repeated IncidenceList incidence_lists = 3;
+  repeated PathInfo all_info = 4;
+}

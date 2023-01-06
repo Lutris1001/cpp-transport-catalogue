@@ -1,17 +1,18 @@
-#include "json_reader.h"
 
 #include <string>
 #include <vector>
+
 #include "json.h"
+#include "map_renderer.h"
 #include "transport_catalogue.h"
 #include "geo.h"
-#include "map_renderer.h"
+#include "json_reader.h"
 
 using namespace json;
 using namespace transport_catalogue;
 using namespace std::literals;
 
-JsonReader::JsonReader(TransportCatalogue* ptr) 
+JsonReader::JsonReader(TransportCatalogue* ptr)
     : catalogue_ptr_(ptr)
 {
 }
@@ -55,6 +56,7 @@ void JsonReader::ProcessRequests() {
 
             ProcessOptimalPathRequest(request);
         }
+
 
         if (request.at("type"s).AsString() == "Map"s) {
             ProcessMapRequest(request);
@@ -274,20 +276,30 @@ void JsonReader::ProcessMapRequest(const Dict& request) {
 
     using namespace renderer;
 
-    MapRenderer renderer(catalogue_ptr_);
+    if (!renderer_.has_value()) {
+        renderer_ = MapRenderer(catalogue_ptr_);
+    }
 
     std::stringstream output;
 
-    renderer.ReadSettings(this);
-
-    renderer.GetCompleteMap(output);
+    renderer_.value().GetCompleteMap(output);
 
     std::string map_as_string = output.str();
 
     responses_.emplace_back(Builder{}
-                                 .StartDict()
-                                 .Key("map"s).Value(Node(map_as_string).GetValue())
-                                 .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
-                                 .EndDict().Build());
+                                    .StartDict()
+                                    .Key("map"s).Value(Node(map_as_string).GetValue())
+                                    .Key("request_id"s).Value(Node(request.at("id"s)).GetValue())
+                                    .EndDict().Build());
 
+}
+
+using namespace renderer;
+void JsonReader::SetRenderSettings(Settings&& settings) {
+
+    if (!renderer_.has_value()) {
+        renderer_ = renderer::MapRenderer(catalogue_ptr_);
+    }
+
+    renderer_->SetSettings(std::move(settings));
 }

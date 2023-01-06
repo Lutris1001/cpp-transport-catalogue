@@ -9,12 +9,13 @@
 #include <sstream>
 
 #include "json.h"
-#include "json_reader.h"
+#include "domain.h"
 #include "svg.h"
 #include "transport_catalogue.h"
 #include "geo.h"
 
 using namespace json;
+using namespace domain;
 using namespace std::literals;
 
 namespace renderer {
@@ -91,8 +92,6 @@ class MapRenderer {
 
 public:
 
-    void ReadSettings(JsonReader* ptr);
-
     explicit MapRenderer(transport_catalogue::TransportCatalogue* ptr);
 
     void RenderRoutes();
@@ -112,6 +111,8 @@ public:
     std::ostream& RenderRouteMap(std::ostream& output);
 
     const svg::Document& GetMapDocumentRef() const;
+
+    void SetSettings(Settings&& settings);
 
 private:
 

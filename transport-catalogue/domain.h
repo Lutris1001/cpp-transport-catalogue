@@ -3,9 +3,9 @@
 #include <cassert>
 #include "geo.h"
 
-using namespace geo;
-
 namespace domain {
+
+    using namespace geo;
 
 struct Stop {
 
@@ -17,7 +17,7 @@ struct Stop {
         assert(double(-180.0) <= geo_map_point.lng && geo_map_point.lng <= double(180.0));
     }
 
-    bool operator==(const Stop& other);
+    bool operator==(const Stop& other) const;
 
     std::string name;
     Coordinates map_point;
@@ -39,9 +39,12 @@ struct StopPtrHash {
 
 class StopPtrPairEqualKey { // EqualTo class for all_distances_
 public:
-    constexpr bool operator()(const StopPtrPair &lhs, const StopPtrPair &rhs) const
+    bool operator()(const StopPtrPair &lhs, const StopPtrPair &rhs) const
     {
-        return *(lhs.first) == *(rhs.first) && *(lhs.second) == *(rhs.second);
+//        return *(const_cast<const domain::Stop*>(lhs.first)) == *(const_cast<const domain::Stop*>(rhs.first))
+//                && *(const_cast<const domain::Stop*>(lhs.second)) == *(const_cast<const domain::Stop*>(rhs.second));
+
+        return lhs.first->name == rhs.first->name && lhs.second->name == rhs.second->name;
     }
 };
 

@@ -8,8 +8,10 @@
 #include "json_builder.h"
 #include "transport_catalogue.h"
 #include "geo.h"
+#include "map_renderer.h"
 
 using namespace domain;
+using namespace renderer;
 
 class JsonReader {
 public:
@@ -25,11 +27,14 @@ void FillCatalogue();
 void ProcessRequests();
 
 std::ostream& PrintResponses(std::ostream& output);
+
+void SetRenderSettings(Settings&& settings);
     
 private:
     json::Document all_objects_ = json::Document(json::Node());
-    transport_catalogue::TransportCatalogue* catalogue_ptr_;
+    transport_catalogue::TransportCatalogue* catalogue_ptr_ = nullptr;
     json::Array responses_;
+    std::optional<MapRenderer> renderer_ = std::nullopt;
 
     void AddOneStop(const json::Dict& request);
     void AddAllStops();

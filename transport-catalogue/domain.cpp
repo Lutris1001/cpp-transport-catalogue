@@ -1,7 +1,8 @@
 #include "domain.h"
-#include "transport_catalogue.h"
 
 namespace domain {
+
+    using namespace geo;
 
 double RouteAdditionalParameters::CalculateGeoRouteLength() {
 
@@ -32,7 +33,7 @@ std::size_t RouteAdditionalParameters::CalculateUniqueStops() {
     return unique_stops;
 }
 
-bool Stop::operator==(const Stop& other) {
+bool Stop::operator==(const Stop& other) const {
     return name == other.name;
 }
 

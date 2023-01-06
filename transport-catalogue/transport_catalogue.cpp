@@ -230,6 +230,10 @@ const Route* TransportCatalogue::GetRoutePtr(const std::string_view& route_name)
     return const_cast<Route*>(route_name_to_route_.at(route_name));
 }
 
+const Stop* TransportCatalogue::GetStopPtr(const std::string_view& stop_name) const {
+    return const_cast<Stop*>(stop_name_to_stop_.at(stop_name));
+}
+
 bool TransportCatalogue::RouterExist() const {
     return router_ != nullptr;
 }
@@ -241,6 +245,21 @@ void TransportCatalogue::CreateRouter(RouterSettings settings) {
                                                                     all_distances_,
                                                                     all_routes_,
                                                                     all_stops_.size()));
+    }
+}
+
+std::unique_ptr<TransportRouter>& TransportCatalogue::GetRouter() {
+    return router_;
+}
+
+void TransportCatalogue::CreateRouterFromProto(RouterSettings&& settings, graph::DirectedWeightedGraph<double>&& graph,
+                               std::unordered_map<graph::EdgeId, transport_catalogue::PathInfo>&& all_info) {
+    if (router_ == nullptr) {
+        router_ = std::make_unique<TransportRouter>(TransportRouter(std::move(settings),
+                                                                    all_distances_,
+                                                                    all_routes_,
+                                                                    std::move(graph),
+                                                                    std::move(all_info)));
     }
 }
 

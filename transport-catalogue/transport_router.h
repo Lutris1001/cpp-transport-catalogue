@@ -30,10 +30,21 @@ public:
 
     using DistanceMap = std::unordered_map<StopPtrPair, int, StopPtrHash, StopPtrPairEqualKey>;
 
-    explicit TransportRouter(RouterSettings settings, const DistanceMap& distances, const std::deque<Route>& routes, size_t vertex_count)
+    TransportRouter(RouterSettings&& settings, const DistanceMap& distances, const std::deque<Route>& routes, size_t vertex_count)
         : settings_(std::move(settings)), distances_(distances), routes_(routes), graph_(vertex_count)
     {
         AutoFillGraph(vertex_count);
+    }
+
+    TransportRouter(RouterSettings&& settings, const DistanceMap& distances,
+                    const std::deque<Route>& routes, graph::DirectedWeightedGraph<double>&& graph,
+                    std::unordered_map<graph::EdgeId, transport_catalogue::PathInfo>&& all_info)
+            : settings_(settings),
+            distances_(distances),
+            routes_(routes),
+            graph_(std::move(graph)),
+            edge_id_to_path_info_(std::move(all_info))
+    {
     }
 
     std::optional<Router<double>::RouteInfo> BuildRoute(int from, int to);
@@ -48,6 +59,18 @@ public:
 
     double GetBusWaitTme() const {
         return settings_.bus_wait_time_;
+    }
+
+    const graph::DirectedWeightedGraph<double>& GetGraph() {
+        return graph_;
+    }
+
+    const std::unordered_map<graph::EdgeId, PathInfo>& GetAllPathInfo() {
+        return edge_id_to_path_info_;
+    }
+
+    void SetAllPathInfo(std::unordered_map<graph::EdgeId, PathInfo>&& all_info) {
+        edge_id_to_path_info_ = std::move(all_info);
     }
 
 private:
