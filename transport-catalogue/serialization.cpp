@@ -19,9 +19,9 @@ using namespace json;
 
 namespace serial_database {
 
-    proto_serialize::Stop SerializeStop(const Stop& stop) {
+    proto_catalogue::Stop SerializeStop(const Stop& stop) {
 
-        proto_serialize::Stop proto_stop;
+        proto_catalogue::Stop proto_stop;
         proto_stop.set_name(stop.name);
         proto_stop.set_latitude(stop.map_point.lat);
         proto_stop.set_longitude(stop.map_point.lng);
@@ -29,9 +29,9 @@ namespace serial_database {
         return std::move(proto_stop);
     }
 
-    proto_serialize::Distance SerializeDistance(const std::string& from, const std::string& to, int dist) {
+    proto_catalogue::Distance SerializeDistance(const std::string& from, const std::string& to, int dist) {
 
-        proto_serialize::Distance proto_distance;
+        proto_catalogue::Distance proto_distance;
         proto_distance.set_stop_name_from(from);
         proto_distance.set_stop_name_to(to);
         proto_distance.set_distance(dist);
@@ -39,16 +39,16 @@ namespace serial_database {
         return std::move(proto_distance);
     }
 
-    proto_serialize::Route SerializeRoute(const Route& route) {
+    proto_catalogue::Route SerializeRoute(const Route& route) {
 
-        proto_serialize::Route proto_route;
+        proto_catalogue::Route proto_route;
         proto_route.set_name(route.name);
         proto_route.set_is_roundtrip(route.is_roundtrip);
 
         if (!route.is_roundtrip) {
 
-            for (auto i = route.stops.begin(); i < route.stops.begin() + route.stops.size() / 2 + 1; ++i) {
-                proto_route.add_stop_name((*i)->name);
+            for (auto index = 0; index < route.stops.size() / 2 + 1; ++index) {
+                proto_route.add_stop_name(route.stops.at(index)->name);
             }
 
             return std::move(proto_route);
@@ -61,44 +61,47 @@ namespace serial_database {
         return std::move(proto_route);
     }
 
-    proto_serialize::Color SerializeColor(const Node& json_color) {
-        proto_serialize::Color color;
+    proto_svg::Color SerializeColor(const Node& json_color) {
+        proto_svg::Color color;
 
         if (json_color.IsString()) {
-            color.set_is_string(true);
-            color.set_is_transparent(false);
-            color.set_string_color(json_color.AsString());
+            proto_svg::StringColor string_color;
+            string_color.set_string_color(json_color.AsString());
+            *color.mutable_string_color() = std::move(string_color);
             return color;
         }
 
         if (json_color.AsArray().size() == 4) {
-            color.set_is_transparent(true);
-            color.set_is_string(false);
-            color.set_r(json_color.AsArray().at(0).AsInt());
-            color.set_g(json_color.AsArray().at(1).AsInt());
-            color.set_b(json_color.AsArray().at(2).AsInt());
-            color.set_a(json_color.AsArray().at(3).AsDouble());
+            proto_svg::RGBA rgba;
+            rgba.set_r(json_color.AsArray().at(0).AsInt());
+            rgba.set_g(json_color.AsArray().at(1).AsInt());
+            rgba.set_b(json_color.AsArray().at(2).AsInt());
+            rgba.set_a(json_color.AsArray().at(3).AsDouble());
+            *color.mutable_rgba() = std::move(rgba);
+            return color;
+        }
+        if (json_color.AsArray().size() == 3) {
+            proto_svg::RGB rgb;
+            rgb.set_r(json_color.AsArray().at(0).AsInt());
+            rgb.set_g(json_color.AsArray().at(1).AsInt());
+            rgb.set_b(json_color.AsArray().at(2).AsInt());
+            *color.mutable_rgb() = std::move(rgb);
             return color;
         }
 
-        color.set_is_string(false);
-        color.set_is_transparent(false);
-        color.set_r(json_color.AsArray().at(0).AsInt());
-        color.set_g(json_color.AsArray().at(1).AsInt());
-        color.set_b(json_color.AsArray().at(2).AsInt());
         return color;
     }
 
-    proto_serialize::RoutingSetting SerialRoutingSetting(const transport_catalogue::RouterSettings& settings) {
-        proto_serialize::RoutingSetting serial_settings;
+    proto_router::RoutingSetting SerialRoutingSetting(const transport_catalogue::RouterSettings& settings) {
+        proto_router::RoutingSetting serial_settings;
         serial_settings.set_bus_velocity_(settings.bus_velocity_);
         serial_settings.set_bus_wait_time_(settings.bus_wait_time_);
         return serial_settings;
     }
 
-    proto_serialize::RenderSetting SerialRenderSetting(const Dict& json_settings) {
+    proto_renderer::RenderSetting SerialRenderSetting(const Dict& json_settings) {
 
-        proto_serialize::RenderSetting settings;
+        proto_renderer::RenderSetting settings;
 
         settings.set_width(json_settings.at("width"s).AsDouble());
         settings.set_height(json_settings.at("height"s).AsDouble());
@@ -131,9 +134,9 @@ namespace serial_database {
         return settings;
     }
 
-    proto_serialize::TransportCatalogue SerializeCatalogueData(const transport_catalogue::TransportCatalogue& catalogue) {
+    proto_catalogue::TransportCatalogue SerializeCatalogueData(const transport_catalogue::TransportCatalogue& catalogue) {
 
-        proto_serialize::TransportCatalogue full_data;
+        proto_catalogue::TransportCatalogue full_data;
 
         const auto all_stops_ptr = catalogue.GetConstStopsPtr();
 
@@ -165,41 +168,43 @@ namespace serial_database {
         return router_settings;
     }
 
-    proto_serialize::Router SerialRouter(transport_catalogue::TransportCatalogue& catalogue,
-                                                       proto_serialize::RoutingSetting&& settings) {
+    proto_router::Router SerialRouter(transport_catalogue::TransportCatalogue& catalogue,
+                                                       proto_router::RoutingSetting&& settings) {
 
-        proto_serialize::Router router;
+        proto_router::Router router;
 
         auto& ref = catalogue.GetRouter();
 
-        *router.mutable_routing_settings() = std::move(settings);
-
-        assert(ref.get() != nullptr);
-
-        for (const auto& e : ref.get()->GetGraph().GetEdgesRef()) {
-            proto_serialize::Edge edge;
-            edge.set_vertex_id_from(e.from);
-            edge.set_vertex_id_to(e.to);
-            edge.set_weight(e.weight);
-            *router.add_edges() = edge;
+        if (ref.get() == nullptr) {
+            throw std::runtime_error("Unable to serialize router"s);
         }
 
-        for (const auto& e : ref.get()->GetGraph().GetIncidenceListsRef()) {
-            proto_serialize::IncidenceList list;
+        *router.mutable_routing_settings() = std::move(settings);
 
-            for (const auto& e_2 : e) {
-                list.add_edge_id(e_2);
+        for (const auto& edge : ref.get()->GetGraph().GetEdgesRef()) {
+            proto_graph::Edge proto_edge;
+            proto_edge.set_vertex_id_from(edge.from);
+            proto_edge.set_vertex_id_to(edge.to);
+            proto_edge.set_weight(edge.weight);
+            *router.add_edges() = proto_edge;
+        }
+
+        for (const auto& line : ref.get()->GetGraph().GetIncidenceListsRef()) {
+            proto_graph::IncidenceList list;
+
+            for (const auto& edge_id : line) {
+                list.add_edge_id(edge_id);
             }
 
             *router.add_incidence_lists() = list;
         }
 
-        for (const auto& [key, value] : ref.get()->GetAllPathInfo()) {
-            proto_serialize::PathInfo info;
-            info.set_edge_id(key);
-            info.set_route_name(value.route_ptr->name);
-            info.set_stop_name(value.from->name);
-            info.set_span(value.span);
+        for (const auto& [edge_id, path_info] : ref.get()->GetAllPathInfo()) {
+            proto_router::PathInfo info;
+            info.set_edge_id(edge_id);
+            info.set_route_name(path_info.route_ptr->name);
+            info.set_stop_name(path_info.from->name);
+            info.set_span(path_info.span);
 
             *router.add_all_info() = std::move(info);
         }
@@ -241,97 +246,88 @@ namespace serial_database {
 
         *data.mutable_render_settings() = std::move(render_settings);
 
-
         // Write to file part :
-        try {
-            std::ofstream out_file(file_name, std::ios::binary);
-            if (!out_file) {
-                throw std::runtime_error("Out_file_open_error"s);
-            }
-
-            // structure of serial file:
-//            TransportCatalogue:
-//                  RenderSetting;
-//                  Router router;
-//                  repeated Stop;
-//                  repeated Distance;
-//                  repeated Route;
-//            }
-
-            // only one write sys calling;
-            data.SerializePartialToOstream(&out_file);
-
-            return true;
-        }
-        catch (const std::runtime_error& err) {
-            std::cerr << err.what() << std::endl;
+        std::ofstream out_file(file_name, std::ios::binary);
+        if (!out_file) {
+            std::cout << "Out_file_open_error"s << std::endl;
+            return false;
         }
 
-        return false;
+        // only one write sys calling;
+        data.SerializePartialToOstream(&out_file);
+
+        return true;
+
     }
 
-    void FillCatalogue(const proto_serialize::TransportCatalogue& data, transport_catalogue::TransportCatalogue& catalogue) {
+    void FillCatalogue(const proto_catalogue::TransportCatalogue& data, transport_catalogue::TransportCatalogue& catalogue) {
 
-        for (auto i = 0; i < data.all_stops_size(); ++i) {
-            catalogue.AddStop(data.all_stops(i).name(),
-                              {data.all_stops(i).latitude(), data.all_stops(i).longitude()});
+        for (auto index = 0; index < data.all_stops_size(); ++index) {
+            catalogue.AddStop(data.all_stops(index).name(),
+                              {data.all_stops(index).latitude(), data.all_stops(index).longitude()});
 
         }
 
-        for (auto i = 0; i < data.all_distances_size(); ++i) {
+        for (auto index = 0; index < data.all_distances_size(); ++index) {
             catalogue.SetDistance(
-                    data.all_distances(i).stop_name_from(),
-                    data.all_distances(i).stop_name_to(),
-                    data.all_distances(i).distance()
+                    data.all_distances(index).stop_name_from(),
+                    data.all_distances(index).stop_name_to(),
+                    data.all_distances(index).distance()
             );
         }
 
-        for (auto i = 0; i < data.all_routes_size(); ++i) {
+        for (auto route_index = 0; route_index < data.all_routes_size(); ++route_index) {
             std::vector<std::string> stops_str;
 
-            for (const auto& j : data.all_routes(i).stop_name()) {
-                stops_str.push_back(j);
+            for (const auto& stop_name : data.all_routes(route_index).stop_name()) {
+                stops_str.push_back(stop_name);
             }
 
-            if (!data.all_routes(i).is_roundtrip()) {
-                for (auto j = data.all_routes(i).stop_name_size() - 2 ; j >= 0; --j) {
-                    stops_str.push_back(data.all_routes(i).stop_name(j));
+            if (!data.all_routes(route_index).is_roundtrip()) {
+                auto stop_index = std::max(0, int(data.all_routes(route_index).stop_name_size()) - 2);
+                for ( ; stop_index >= 0; --stop_index) {
+                    stops_str.push_back(data.all_routes(route_index).stop_name(stop_index));
                 }
             }
 
-            catalogue.AddRoute(data.all_routes(i).name(),
+            catalogue.AddRoute(data.all_routes(route_index).name(),
                                stops_str,
-                               data.all_routes(i).is_roundtrip());
+                               data.all_routes(route_index).is_roundtrip());
         }
     }
 
-    proto_serialize::TransportCatalogue DeserializeFile(std::istream& file) {
+    proto_catalogue::TransportCatalogue DeserializeFile(std::istream& file) {
 
-        proto_serialize::TransportCatalogue data;
+        proto_catalogue::TransportCatalogue data;
         data.ParseFromIstream(&file);
 
         return data;
     }
 
-    svg::Color DeserializeColor(const proto_serialize::Color& proto_color) {
+    svg::Color DeserializeColor(const proto_svg::Color& proto_color) {
 
-        if (proto_color.is_string()) {
-            return {proto_color.string_color()};
+        if (proto_color.has_string_color() && !proto_color.has_rgb() && !proto_color.has_rgba()) {
+            return {proto_color.string_color().string_color()};
         }
 
-        if (proto_color.is_transparent()) {
-            return {svg::Rgba{uint8_t(proto_color.r()),
-                                 uint8_t(proto_color.g()),
-                                 uint8_t(proto_color.b()),
-                                 double(proto_color.a())}};
+        if (!proto_color.has_string_color() && !proto_color.has_rgb() && proto_color.has_rgba()) {
+            return {svg::Rgba{uint8_t(proto_color.rgba().r()),
+                                 uint8_t(proto_color.rgba().g()),
+                                 uint8_t(proto_color.rgba().b()),
+                                 double(proto_color.rgba().a())}};
         }
 
-        return {svg::Rgb{uint8_t(proto_color.r()),
-                                    uint8_t(proto_color.g()),
-                                    uint8_t(proto_color.b())}};
+        if (!proto_color.has_string_color() && proto_color.has_rgb() && !proto_color.has_rgba()) {
+            return {svg::Rgb{uint8_t(proto_color.rgb().r()),
+                             uint8_t(proto_color.rgb().g()),
+                             uint8_t(proto_color.rgb().b())}};
+
+        }
+
+        return svg::NoneColor;
     }
 
-    renderer::Settings DeserializeRenderSettings(const proto_serialize::TransportCatalogue& data) {
+    renderer::Settings DeserializeRenderSettings(const proto_catalogue::TransportCatalogue& data) {
 
         renderer::Settings settings;
 
@@ -367,30 +363,30 @@ namespace serial_database {
     }
 
     void DeserializeRouter(transport_catalogue::TransportCatalogue& catalogue,
-                           const proto_serialize::Router& proto_router) {
+                           const proto_router::Router& proto_router) {
 
         graph::DirectedWeightedGraph<double> graph;
 
         std::vector<graph::Edge<double>> edges(proto_router.edges_size());
 
-        for (auto i = 0; i < proto_router.edges_size(); ++i) {
-            edges[i].from = proto_router.edges(i).vertex_id_from();
-            edges[i].to = proto_router.edges(i).vertex_id_to();
-            edges[i].weight = proto_router.edges(i).weight();
+        for (auto index = 0; index < proto_router.edges_size(); ++index) {
+            edges[index].from = proto_router.edges(index).vertex_id_from();
+            edges[index].to = proto_router.edges(index).vertex_id_to();
+            edges[index].weight = proto_router.edges(index).weight();
         }
 
         graph.SetEdges(std::move(edges));
 
         std::vector<std::vector<graph::EdgeId>> incidence_lists(proto_router.incidence_lists_size());
 
-        for (auto l = 0; l < proto_router.incidence_lists_size(); ++l) {
-            std::vector<graph::EdgeId> line(proto_router.incidence_lists(l).edge_id_size());
+        for (auto line_index = 0; line_index < proto_router.incidence_lists_size(); ++line_index) {
+            std::vector<graph::EdgeId> line(proto_router.incidence_lists(line_index).edge_id_size());
 
-            for (auto i = 0; i < line.size(); ++i) {
-                line[i] = proto_router.incidence_lists(l).edge_id(i);
+            for (auto edge_id_index = 0; edge_id_index < line.size(); ++edge_id_index) {
+                line[edge_id_index] = proto_router.incidence_lists(line_index).edge_id(edge_id_index);
             }
 
-            incidence_lists[l] = std::move(line);
+            incidence_lists[line_index] = std::move(line);
         }
 
         graph.SetIncidenceLists(std::move(incidence_lists));
@@ -398,8 +394,6 @@ namespace serial_database {
         transport_catalogue::RouterSettings router_settings{proto_router.routing_settings().bus_wait_time_(),
                                                             proto_router.routing_settings().bus_velocity_()
                                                             };
-
-//        ----------------------
 
         std::unordered_map<graph::EdgeId, transport_catalogue::PathInfo> all_info;
 
@@ -424,30 +418,24 @@ namespace serial_database {
 
         auto file_name = doc.GetRoot().AsDict().at("serialization_settings"s).AsDict().at("file"s).AsString();
 
-        try {
-
-            std::ifstream in_file(file_name, std::ios::binary);
-            if (!in_file) {
-                throw std::runtime_error("Input_file_open_error"s);
-            }
-
-            auto proto_catalogue = DeserializeFile(in_file);
-
-            FillCatalogue(proto_catalogue, catalogue);
-
-            reader.SetRenderSettings(DeserializeRenderSettings(proto_catalogue));
-
-            DeserializeRouter(catalogue, proto_catalogue.router());
-
-            reader.ProcessRequests();
-            reader.PrintResponses(output);
-
-        }
-        catch (const std::runtime_error& err) {
-            std::cerr << err.what() << std::endl;
+        std::ifstream in_file(file_name, std::ios::binary);
+        if (!in_file) {
+            std::cout << "Input_file_open_error"s << std::endl;
+            return false;
         }
 
-        return false;
+        auto proto_catalogue = DeserializeFile(in_file);
+
+        FillCatalogue(proto_catalogue, catalogue);
+
+        reader.SetRenderSettings(DeserializeRenderSettings(proto_catalogue));
+
+        DeserializeRouter(catalogue, proto_catalogue.router());
+
+        reader.ProcessRequests();
+        reader.PrintResponses(output);
+
+        return true;
     }
 
 } // end namespace serial_database

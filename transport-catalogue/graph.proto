@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package proto_graph;
+
+message IncidenceList {
+  repeated uint32 edge_id = 1;
+}
+
+message Edge {
+  uint32 vertex_id_from = 1;
+  uint32 vertex_id_to = 2;
+  double weight = 3;
+}

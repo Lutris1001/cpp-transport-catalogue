@@ -20,37 +20,39 @@ using namespace json;
 
 namespace serial_database {
 
-    static inline proto_serialize::Stop SerializeStop(const Stop& stop);
+    // ----------- Serialize functions --------------------------------
 
-    static inline proto_serialize::Distance SerializeDistance(const std::string& from, const std::string& to, int dist);
+    static inline proto_catalogue::Stop SerializeStop(const Stop& stop);
 
-    static inline proto_serialize::Route SerializeRoute(const Route& route);
+    static inline proto_catalogue::Distance SerializeDistance(const std::string& from, const std::string& to, int dist);
 
-    static inline proto_serialize::Color SerializeColor(const Node& json_color);
+    static inline proto_catalogue::Route SerializeRoute(const Route& route);
 
-    static inline proto_serialize::RenderSetting SerialRenderSetting(const Dict& json_settings);
+    static inline proto_svg::Color SerializeColor(const Node& json_color);
 
-    static inline proto_serialize::TransportCatalogue SerializeCatalogueData(
+    static inline proto_renderer::RenderSetting SerialRenderSetting(const Dict& json_settings);
+
+    static inline proto_catalogue::TransportCatalogue SerializeCatalogueData(
             const transport_catalogue::TransportCatalogue& catalogue);
 
-    static inline proto_serialize::RoutingSetting SerialRoutingSetting(const Dict& json_settings);
+    static inline proto_router::RoutingSetting SerialRoutingSetting(const Dict& json_settings);
 
-    static inline proto_serialize::Router SerialRouter(const Dict& json_settings);
+    static inline proto_router::Router SerialRouter(const Dict& json_settings);
 
-    void FillCatalogue(const proto_serialize::TransportCatalogue& data,
+    void FillCatalogue(const proto_catalogue::TransportCatalogue& data,
                        transport_catalogue::TransportCatalogue& catalogue);
 
     bool MakeBase(std::istream& input);
 
-    // ----------- Deserialize --------------------------------
+    // ----------- Deserialize functions --------------------------------
 
-    proto_serialize::TransportCatalogue DeserializeFile(std::istream& file);
+    proto_catalogue::TransportCatalogue DeserializeFile(std::istream& file);
 
-    renderer::Settings DeserializeRenderSettings(const proto_serialize::TransportCatalogue& data);
+    renderer::Settings DeserializeRenderSettings(const proto_catalogue::TransportCatalogue& data);
 
-//  creates router in catalogue with alternative constructor
+    //  creates router in catalogue with alternative constructor
     void DeserializeRouter(transport_catalogue::TransportCatalogue& catalogue,
-                           const proto_serialize::Router& proto_router);
+                           const proto_router::Router& proto_router);
 
     bool ProcessRequests(std::istream& input, std::ostream& output);
 

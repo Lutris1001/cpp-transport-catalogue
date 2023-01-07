@@ -1,0 +1,26 @@
+
+syntax = "proto3";
+
+import "graph.proto";
+import "svg.proto";
+
+package proto_router;
+
+message PathInfo {
+  uint32 edge_id = 1;
+  string route_name = 2;
+  string stop_name = 3;
+  uint32 span = 4;
+}
+
+message RoutingSetting {
+  double bus_wait_time_ = 1;
+  double bus_velocity_ = 2;
+}
+
+message Router {
+  RoutingSetting routing_settings = 1;
+  repeated proto_graph.Edge edges = 2;
+  repeated proto_graph.IncidenceList incidence_lists = 3;
+  repeated PathInfo all_info = 4;
+}

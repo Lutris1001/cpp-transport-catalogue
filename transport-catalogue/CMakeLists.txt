@@ -7,7 +7,13 @@ find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
 
 
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS transport_catalogue.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+        map_renderer.proto
+        graph.proto
+        svg.proto
+        transport_router.proto
+        transport_catalogue.proto
+        )
 
 set(TRANSPORT_CATALOGUE_FILES
         main.cpp
@@ -21,7 +27,6 @@ set(TRANSPORT_CATALOGUE_FILES
         json_reader.h
         json_builder.cpp
         json_builder.h
-        main.cpp
         map_renderer.cpp
         map_renderer.h
         request_handler.cpp
