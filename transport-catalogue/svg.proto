@@ -21,13 +21,6 @@ message StringColor {
 }
 
 message Color {
-//  bool is_string = 1;
-//  bool is_transparent = 2;
-//  string string_color = 3;
-//  uint32 r = 4;
-//  uint32 g = 5;
-//  uint32 b = 6;
-//  double a = 7;
   optional RGB rgb = 1;
   optional RGBA rgba =2;
   optional StringColor string_color = 3;
