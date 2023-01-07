@@ -31,7 +31,6 @@
 *.out
 *.app
 
-transport-catalogue/my_main.cpp
 input.json
 input_requests.json
 output.json
